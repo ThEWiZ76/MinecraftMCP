@@ -16,14 +16,14 @@ This mod creates an HTTP server within the Minecraft client that accepts MCP pro
 
 ## Requirements
 
-- **Minecraft**: 1.21.4
-- **Fabric Loader**: 0.16.14 or higher
-- **Fabric API**: 0.119.3+1.21.4
+- **Minecraft**: 1.21.10
+- **Fabric Loader**: 0.17.3 or higher
+- **Fabric API**: 0.135.0+1.21.10
 - **Java**: 21 or higher
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 1.21.4
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 1.21.10
 2. Download and install [Fabric API](https://modrinth.com/mod/fabric-api)
 3. Place the mod JAR file in your `mods` folder
 4. Launch Minecraft with the Fabric profile
@@ -41,31 +41,33 @@ The mod creates a configuration file at `config/mcp-client.json`:
 ```json
 {
   "server": {
+    "transport": "http",
     "port": 8080,
     "host": "localhost",
-    "enable_safety": true,
+    "enableSafety": true,
     "enableUnsafeChatCommands": false,
-    "max_area_size": 50,
-    "allowed_commands": ["fill", "clone", "setblock", "summon", "tp", "give"],
-    "request_timeout_ms": 30000
+    "enableGuiAutomationTools": false,
+    "maxAreaSize": 10,
+    "allowedCommands": ["fill", "clone", "setblock", "summon", "tp", "give"],
+    "requestTimeoutMs": 30000,
+    "autoStart": true
   },
   "client": {
-    "auto_start": true,
-    "show_notifications": true,
-    "log_level": "INFO",
-    "log_commands": false,
-    "save_screenshots_for_debug": false
+    "showNotifications": true,
+    "logLevel": "INFO",
+    "logCommands": false,
+    "saveScreenshotsForDebug": false
   },
   "safety": {
-    "max_entities_per_command": 10,
-    "max_blocks_per_command": 125000,
-    "block_creative_for_all": true,
-    "require_op_for_admin_commands": true
+    "maxEntitiesPerCommand": 10,
+    "maxBlocksPerCommand": 125000,
+    "blockCreativeForAll": true,
+    "requireOpForAdminCommands": true
   }
 }
 ```
 
-`server.request_timeout_ms` limits how long the server waits for tool execution (including `execute_commands`, `execute_chat_commands`, and `take_screenshot`) before returning a timeout error.
+`server.requestTimeoutMs` limits how long the server waits for tool execution (including `execute_commands`, `execute_chat_commands`, `take_screenshot`, and GUI automation calls) before returning a timeout error.
 
 ### Connecting with AI Assistants
 
@@ -74,14 +76,22 @@ Connect your AI assistant (like Claude) to the MCP server using the endpoint:
 http://localhost:8080/mcp
 ```
 
+If `localhost` on your machine is intercepted by another local service, use:
+```
+http://127.0.0.1:8080/mcp
+```
+
 The server supports these tools:
 - `execute_commands` - Execute Minecraft commands with safety validation
 - `execute_chat_commands` - Execute arbitrary player chat commands for explicit admin/debug/plugin testing when `server.enableUnsafeChatCommands` is enabled
 - `get_player_info` - Get comprehensive player information
 - `get_blocks_in_area` - Scan and retrieve blocks in a specified area
 - `take_screenshot` - Capture game screen with optional camera control
+- `get_current_screen` - Inspect the currently open GUI when `server.enableGuiAutomationTools` is enabled
+- `click_screen_slot` - Click a slot in the current handled GUI when `server.enableGuiAutomationTools` is enabled
+- `close_current_screen` - Close the current GUI when `server.enableGuiAutomationTools` is enabled
 
-`execute_chat_commands` is intentionally disabled by default so the safe vanilla command surface remains unchanged.
+`execute_chat_commands` and the GUI automation tools are intentionally disabled by default so the safe vanilla command surface remains unchanged.
 
 ### Example Commands
 
@@ -293,6 +303,31 @@ Capture a screenshot of the current Minecraft game screen. Optionally, you can s
 }
 ```
 
+### Tool: get_current_screen
+
+Inspect the currently open screen. For handled inventory screens, the response includes the screen title, class name, sync id, cursor stack, and all slot contents.
+
+**Parameters:** None required
+
+### Tool: click_screen_slot
+
+Click a slot in the currently open handled inventory screen.
+
+**Parameters:**
+- `slot` (integer, required): Slot id from `get_current_screen`
+- `button` (integer, optional): Mouse button index. `0` = left, `1` = right
+- `action` (string, optional): Slot action type. Defaults to `PICKUP`
+
+**Notes:**
+- Available only when `server.enableGuiAutomationTools` is `true`
+- Intended for local GUI testing and inventory automation
+
+### Tool: close_current_screen
+
+Close the current client screen.
+
+**Parameters:** None required
+
 ## Debugging
 
 ### Local Screenshot Storage
@@ -300,7 +335,7 @@ Capture a screenshot of the current Minecraft game screen. Optionally, you can s
 For debugging purposes, you can enable local saving of every screenshot captured by the MCP server.
 
 1. Open `config/mcp-client.json`.
-2. Set `"save_screenshots_for_debug": true` in the `client` section.
+2. Set `"saveScreenshotsForDebug": true` in the `client` section.
 3. Screenshots will be saved to the `mcp_debug_screenshots/` directory in your Minecraft instance folder.
 4. Files are named using the pattern: `screenshot_YYYYMMDD_HHMMSS_SSS.png`.
 

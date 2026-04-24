@@ -12,6 +12,7 @@ import cuspymd.mcp.mod.server.MCPProtocol;
 import cuspymd.mcp.mod.utils.PlayerInfoProvider;
 import cuspymd.mcp.mod.utils.BlockScanner;
 import cuspymd.mcp.mod.utils.ScreenshotUtils;
+import cuspymd.mcp.mod.utils.ScreenAutomationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -300,6 +301,15 @@ public class HTTPMCPServer {
                 case "take_screenshot" -> {
                     return handleTakeScreenshot(arguments);
                 }
+                case "get_current_screen" -> {
+                    return getCurrentScreenInfo(arguments);
+                }
+                case "click_screen_slot" -> {
+                    return clickScreenSlot(arguments);
+                }
+                case "close_current_screen" -> {
+                    return closeCurrentScreen(arguments);
+                }
                 case null, default -> {
                     JsonObject error = new JsonObject();
                     error.addProperty("isError", true);
@@ -409,6 +419,61 @@ public class HTTPMCPServer {
 
     CompletableFuture<String> takeScreenshotAsync(JsonObject params) {
         return ScreenshotUtils.takeScreenshot(params);
+    }
+
+    JsonObject getCurrentScreenInfo(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        return awaitJsonResult(ScreenAutomationUtils.inspectCurrentScreen(), "inspect current screen");
+    }
+
+    JsonObject clickScreenSlot(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return awaitJsonResult(ScreenAutomationUtils.clickScreenSlot(params), "click screen slot");
+    }
+
+    JsonObject closeCurrentScreen(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        return awaitJsonResult(ScreenAutomationUtils.closeCurrentScreen(), "close current screen");
+    }
+
+    JsonObject awaitJsonResult(CompletableFuture<JsonObject> future, String operationName) {
+        try {
+            JsonObject payload = future.get(config.getServer().getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
+            return MCPProtocol.createSuccessResponse(payload.toString());
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            LOGGER.warn("{} timed out after {} ms", operationName, config.getServer().getRequestTimeoutMs());
+            return MCPProtocol.createErrorResponse(
+                capitalize(operationName) + " timed out after " + config.getServer().getRequestTimeoutMs() + " ms",
+                null
+            );
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            LOGGER.warn("{} interrupted", operationName);
+            return MCPProtocol.createErrorResponse(capitalize(operationName) + " was interrupted", null);
+        } catch (ExecutionException e) {
+            LOGGER.error("Error trying to {}", operationName, e.getCause() != null ? e.getCause() : e);
+            String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            return MCPProtocol.createErrorResponse("Failed to " + operationName + ": " + errorMessage, null);
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error trying to {}", operationName, e);
+            return MCPProtocol.createErrorResponse("Failed to " + operationName + ": " + e.getMessage(), null);
+        }
+    }
+
+    private String capitalize(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        return Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
     
     private JsonObject createSuccessResponse(JsonObject result, Integer requestId) {

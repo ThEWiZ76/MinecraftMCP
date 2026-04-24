@@ -64,6 +64,39 @@ public class MCPProtocolTest {
         assertTrue(containsToolNamed(tools, "execute_chat_commands"));
     }
 
+    @Test
+    public void screenshotToolIsExposedByDefault() {
+        JsonArray tools = MCPProtocol.getToolsListResponse(new MCPConfig());
+
+        assertTrue(containsToolNamed(tools, "take_screenshot"));
+    }
+
+    @Test
+    public void guiToolsAreHiddenByDefault() {
+        JsonArray tools = MCPProtocol.getToolsListResponse(new MCPConfig());
+
+        assertFalse(containsToolNamed(tools, "get_current_screen"));
+        assertFalse(containsToolNamed(tools, "click_screen_slot"));
+        assertFalse(containsToolNamed(tools, "close_current_screen"));
+    }
+
+    @Test
+    public void guiToolsAreExposedWhenEnabled() {
+        MCPConfig config = GSON.fromJson("""
+            {
+              "server": {
+                "enableGuiAutomationTools": true
+              }
+            }
+            """, MCPConfig.class);
+
+        JsonArray tools = MCPProtocol.getToolsListResponse(config);
+
+        assertTrue(containsToolNamed(tools, "get_current_screen"));
+        assertTrue(containsToolNamed(tools, "click_screen_slot"));
+        assertTrue(containsToolNamed(tools, "close_current_screen"));
+    }
+
     private static boolean containsToolNamed(JsonArray tools, String toolName) {
         for (int i = 0; i < tools.size(); i++) {
             JsonObject tool = tools.get(i).getAsJsonObject();

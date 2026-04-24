@@ -1,8 +1,10 @@
 package cuspymd.mcp.mod.bridge;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import cuspymd.mcp.mod.config.MCPConfig;
+import cuspymd.mcp.mod.server.MCPProtocol;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -135,10 +137,88 @@ public class HTTPMCPServerTest {
         assertEquals("no-args-image", firstContent.get("data").getAsString());
     }
 
+    @Test
+    public void testHandleMCPRequest_ToolsCallGetCurrentScreen() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.screenResponse = new JsonObject();
+        server.screenResponse.addProperty("title", "Weapon Assembly");
+
+        JsonObject request = new JsonObject();
+        request.addProperty("jsonrpc", "2.0");
+        request.addProperty("id", 10);
+        request.addProperty("method", "tools/call");
+        JsonObject params = new JsonObject();
+        params.addProperty("name", "get_current_screen");
+        params.add("arguments", new JsonObject());
+        request.add("params", params);
+
+        JsonObject response = invokeHandleMCPRequest(server, request);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"title\":\"Weapon Assembly\""));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallClickScreenSlot() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.clickResponse = new JsonObject();
+        server.clickResponse.addProperty("clicked", true);
+
+        JsonObject request = new JsonObject();
+        request.addProperty("jsonrpc", "2.0");
+        request.addProperty("id", 11);
+        request.addProperty("method", "tools/call");
+        JsonObject params = new JsonObject();
+        params.addProperty("name", "click_screen_slot");
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("slot", 13);
+        params.add("arguments", arguments);
+        request.add("params", params);
+
+        JsonObject response = invokeHandleMCPRequest(server, request);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"clicked\":true"));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallCloseCurrentScreen() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.closeResponse = new JsonObject();
+        server.closeResponse.addProperty("closed", true);
+
+        JsonObject request = new JsonObject();
+        request.addProperty("jsonrpc", "2.0");
+        request.addProperty("id", 12);
+        request.addProperty("method", "tools/call");
+        JsonObject params = new JsonObject();
+        params.addProperty("name", "close_current_screen");
+        params.add("arguments", new JsonObject());
+        request.add("params", params);
+
+        JsonObject response = invokeHandleMCPRequest(server, request);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"closed\":true"));
+    }
+
     private JsonObject invokeHandleMCPRequest(HTTPMCPServer server, JsonObject request) throws Exception {
         Method method = HTTPMCPServer.class.getDeclaredMethod("handleMCPRequest", JsonObject.class);
         method.setAccessible(true);
         return (JsonObject) method.invoke(server, request);
+    }
+
+    private MCPConfig guiEnabledConfig() {
+        return new Gson().fromJson("""
+            {
+              "server": {
+                "enableGuiAutomationTools": true
+              }
+            }
+            """, MCPConfig.class);
     }
 
     private String extractText(JsonObject response) {
@@ -178,6 +258,9 @@ public class HTTPMCPServerTest {
 
     private static class TestableHTTPMCPServer extends HTTPMCPServer {
         CompletableFuture<String> nextFuture;
+        JsonObject screenResponse;
+        JsonObject clickResponse;
+        JsonObject closeResponse;
 
         TestableHTTPMCPServer(MCPConfig config) {
             super(config);
@@ -186,6 +269,21 @@ public class HTTPMCPServerTest {
         @Override
         CompletableFuture<String> takeScreenshotAsync(JsonObject params) {
             return nextFuture;
+        }
+
+        @Override
+        JsonObject getCurrentScreenInfo(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(screenResponse.toString());
+        }
+
+        @Override
+        JsonObject clickScreenSlot(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(clickResponse.toString());
+        }
+
+        @Override
+        JsonObject closeCurrentScreen(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(closeResponse.toString());
         }
     }
 }

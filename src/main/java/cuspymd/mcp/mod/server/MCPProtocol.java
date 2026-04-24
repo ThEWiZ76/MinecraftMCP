@@ -200,6 +200,68 @@ public class MCPProtocol {
         
         getBlocksInAreaTool.add("inputSchema", blocksInputSchema);
         tools.add(getBlocksInAreaTool);
+
+        JsonObject takeScreenshotTool = new JsonObject();
+        takeScreenshotTool.addProperty("name", "take_screenshot");
+        takeScreenshotTool.addProperty("description",
+            "Capture a screenshot from the active Minecraft client and return it as an image result. " +
+            "Optional x/y/z/yaw/pitch arguments can reposition or rotate the player view before capture."
+        );
+
+        JsonObject screenshotInputSchema = new JsonObject();
+        screenshotInputSchema.addProperty("type", "object");
+        JsonObject screenshotProperties = new JsonObject();
+        screenshotProperties.add("x", numberProperty("number", "Optional absolute X coordinate for a temporary camera move before capture"));
+        screenshotProperties.add("y", numberProperty("number", "Optional absolute Y coordinate for a temporary camera move before capture"));
+        screenshotProperties.add("z", numberProperty("number", "Optional absolute Z coordinate for a temporary camera move before capture"));
+        screenshotProperties.add("yaw", numberProperty("number", "Optional yaw rotation in degrees"));
+        screenshotProperties.add("pitch", numberProperty("number", "Optional pitch rotation in degrees"));
+        screenshotInputSchema.add("properties", screenshotProperties);
+        takeScreenshotTool.add("inputSchema", screenshotInputSchema);
+        tools.add(takeScreenshotTool);
+
+        if (config != null && config.getServer() != null && config.getServer().isEnableGuiAutomationTools()) {
+            JsonObject getCurrentScreenTool = new JsonObject();
+            getCurrentScreenTool.addProperty("name", "get_current_screen");
+            getCurrentScreenTool.addProperty("description",
+                "Inspect the currently open Minecraft screen. For handled inventory screens this returns title, screen class, sync id, cursor stack, and slot contents."
+            );
+            JsonObject emptyInputSchema = new JsonObject();
+            emptyInputSchema.addProperty("type", "object");
+            emptyInputSchema.add("properties", new JsonObject());
+            getCurrentScreenTool.add("inputSchema", emptyInputSchema);
+            tools.add(getCurrentScreenTool);
+
+            JsonObject clickScreenSlotTool = new JsonObject();
+            clickScreenSlotTool.addProperty("name", "click_screen_slot");
+            clickScreenSlotTool.addProperty("description",
+                "Click a slot in the currently open handled screen. Intended for GUI testing. " +
+                "Defaults to a left-click pickup action. Use this together with get_current_screen."
+            );
+            JsonObject clickInputSchema = new JsonObject();
+            clickInputSchema.addProperty("type", "object");
+            JsonObject clickProperties = new JsonObject();
+            clickProperties.add("slot", integerProperty("Target slot id from get_current_screen"));
+            clickProperties.add("button", integerProperty("Mouse button index. 0 = left, 1 = right"));
+            JsonObject actionProperty = new JsonObject();
+            actionProperty.addProperty("type", "string");
+            actionProperty.addProperty("description", "Slot action type. Defaults to PICKUP. Supported values include PICKUP, QUICK_MOVE, SWAP, THROW, QUICK_CRAFT, PICKUP_ALL.");
+            clickProperties.add("action", actionProperty);
+            clickInputSchema.add("properties", clickProperties);
+            JsonArray clickRequired = new JsonArray();
+            clickRequired.add("slot");
+            clickInputSchema.add("required", clickRequired);
+            clickScreenSlotTool.add("inputSchema", clickInputSchema);
+            tools.add(clickScreenSlotTool);
+
+            JsonObject closeCurrentScreenTool = new JsonObject();
+            closeCurrentScreenTool.addProperty("name", "close_current_screen");
+            closeCurrentScreenTool.addProperty("description",
+                "Close the currently open Minecraft screen on the client."
+            );
+            closeCurrentScreenTool.add("inputSchema", emptyInputSchema.deepCopy());
+            tools.add(closeCurrentScreenTool);
+        }
         
         return tools;
     }
@@ -266,5 +328,19 @@ public class MCPProtocol {
             }
         }
         return List.copyOf(filtered);
+    }
+
+    private static JsonObject numberProperty(String type, String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", type);
+        property.addProperty("description", description);
+        return property;
+    }
+
+    private static JsonObject integerProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "integer");
+        property.addProperty("description", description);
+        return property;
     }
 }
