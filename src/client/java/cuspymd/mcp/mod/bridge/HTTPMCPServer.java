@@ -288,6 +288,9 @@ public class HTTPMCPServer {
                 case "execute_commands" -> {
                     return commandExecutor.executeCommands(arguments);
                 }
+                case "execute_chat_commands" -> {
+                    return commandExecutor.executeChatCommands(arguments);
+                }
                 case "get_player_info" -> {
                     return handleGetPlayerInfo();
                 }

@@ -44,6 +44,7 @@ The mod creates a configuration file at `config/mcp-client.json`:
     "port": 8080,
     "host": "localhost",
     "enable_safety": true,
+    "enableUnsafeChatCommands": false,
     "max_area_size": 50,
     "allowed_commands": ["fill", "clone", "setblock", "summon", "tp", "give"],
     "request_timeout_ms": 30000
@@ -64,7 +65,7 @@ The mod creates a configuration file at `config/mcp-client.json`:
 }
 ```
 
-`server.request_timeout_ms` limits how long the server waits for tool execution (including `execute_commands` and `take_screenshot`) before returning a timeout error.
+`server.request_timeout_ms` limits how long the server waits for tool execution (including `execute_commands`, `execute_chat_commands`, and `take_screenshot`) before returning a timeout error.
 
 ### Connecting with AI Assistants
 
@@ -73,11 +74,14 @@ Connect your AI assistant (like Claude) to the MCP server using the endpoint:
 http://localhost:8080/mcp
 ```
 
-The server supports three main tools:
+The server supports these tools:
 - `execute_commands` - Execute Minecraft commands with safety validation
+- `execute_chat_commands` - Execute arbitrary player chat commands for explicit admin/debug/plugin testing when `server.enableUnsafeChatCommands` is enabled
 - `get_player_info` - Get comprehensive player information
 - `get_blocks_in_area` - Scan and retrieve blocks in a specified area
 - `take_screenshot` - Capture game screen with optional camera control
+
+`execute_chat_commands` is intentionally disabled by default so the safe vanilla command surface remains unchanged.
 
 ### Example Commands
 
@@ -167,6 +171,34 @@ Execute one or more Minecraft commands sequentially with safety validation.
         "setblock ~5 ~6 ~4 oak_door"
       ],
       "validate_safety": true
+    }
+  }
+}
+```
+
+### Tool: execute_chat_commands
+
+Execute one or more arbitrary player chat commands sequentially for plugin or admin testing.
+
+**Parameters:**
+- `commands` (array): List of commands, with or without a leading slash
+
+**Notes:**
+- Available only when `server.enableUnsafeChatCommands` is `true`
+- Bypasses the normal `execute_commands` allowlist and safety validator
+- Intended for trusted local testing only
+
+**Example Request:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "execute_chat_commands",
+    "arguments": {
+      "commands": [
+        "/customgear ammo",
+        "/mtgrinding debug"
+      ]
     }
   }
 }

@@ -13,6 +13,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class CommandExecutorResponseSchemaTest {
 
     @Test
+    public void unsafeChatCommandsStripSingleLeadingSlash() {
+        assertEquals("customgear ammo", CommandExecutor.normalizeUnsafeChatCommand("/customgear ammo"));
+        assertEquals("customgear ammo", CommandExecutor.normalizeUnsafeChatCommand("customgear ammo"));
+    }
+
+    @Test
+    public void unsafeChatCommandsRejectBlankInput() {
+        assertTrue(CommandExecutor.normalizeUnsafeChatCommand("   ").isEmpty());
+    }
+
+    @Test
     public void responseIncludesCountsAndPerCommandMessages() {
         CommandResult applied = CommandResult.builder()
             .accepted(true)

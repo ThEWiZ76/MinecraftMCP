@@ -69,6 +69,29 @@ public class CommandExecutor {
             return MCPProtocol.createErrorResponse("Internal error: " + e.getMessage(), null);
         }
     }
+
+    public JsonObject executeChatCommands(JsonObject arguments) {
+        try {
+            if (!config.getServer().isEnableUnsafeChatCommands()) {
+                return MCPProtocol.createErrorResponse("Unsafe chat command tool is disabled in config", null);
+            }
+
+            JsonArray commandsArray = arguments.getAsJsonArray("commands");
+            List<String> commands = new ArrayList<>();
+            for (int i = 0; i < commandsArray.size(); i++) {
+                String normalized = normalizeUnsafeChatCommand(commandsArray.get(i).getAsString());
+                if (normalized.isEmpty()) {
+                    return MCPProtocol.createErrorResponse("Command at index " + i + " is blank after normalization", null);
+                }
+                commands.add(normalized);
+            }
+
+            return executeCommandsSequentially(commands);
+        } catch (Exception e) {
+            LOGGER.error("Error executing unsafe chat commands", e);
+            return MCPProtocol.createErrorResponse("Internal error: " + e.getMessage(), null);
+        }
+    }
     
     private JsonObject executeCommandsSequentially(List<String> commands) {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -229,6 +252,23 @@ public class CommandExecutor {
         }
         sender.send(command);
         return true;
+    }
+
+    static String normalizeUnsafeChatCommand(String command) {
+        if (command == null) {
+            return "";
+        }
+
+        String normalized = command.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1).trim();
+        }
+
+        return normalized;
     }
 
     private static CommandResult buildExecutionError(String command, String summary, long startTime) {

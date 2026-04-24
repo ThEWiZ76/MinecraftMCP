@@ -91,6 +91,20 @@ public class MCPProtocol {
         
         executeCommandsTool.add("inputSchema", inputSchema);
         tools.add(executeCommandsTool);
+
+        if (config != null && config.getServer() != null && config.getServer().isEnableUnsafeChatCommands()) {
+            JsonObject executeChatCommandsTool = new JsonObject();
+            executeChatCommandsTool.addProperty("name", "execute_chat_commands");
+            executeChatCommandsTool.addProperty("description",
+                "Execute one or more arbitrary player chat commands sequentially for admin/debug/plugin testing. " +
+                "This tool is intentionally unsafe and bypasses the normal execute_commands allowlist and safety validator.\n\n" +
+                "Use this for plugin commands such as /customgear, /mtgrinding, or other server commands that are not part of the safe vanilla tool.\n\n" +
+                "Input accepts either '/command args' or 'command args'. Commands are normalized before dispatch.\n\n" +
+                "Response schema mirrors execute_commands where practical, including per-command status, summary, and captured chat messages."
+            );
+            executeChatCommandsTool.add("inputSchema", inputSchema.deepCopy());
+            tools.add(executeChatCommandsTool);
+        }
         
         // Get player info tool
         JsonObject getPlayerInfoTool = new JsonObject();
