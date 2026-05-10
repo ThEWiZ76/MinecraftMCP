@@ -59,6 +59,8 @@ public class MCPConfig {
         private int port = 8080;
         private String host = "localhost";
         private boolean enableSafety = true;
+        private boolean enableUnsafeChatCommands = false;
+        private boolean enableGuiAutomationTools = false;
         private int maxAreaSize = 10;
         private List<String> allowedCommands = List.of("fill", "clone", "setblock", "summon", "tp", "give", "gamemode", "effect", "enchant", "weather", "time", "say", "tell", "title");
         private int requestTimeoutMs = 30000;
@@ -68,6 +70,8 @@ public class MCPConfig {
         public int getPort() { return port; }
         public String getHost() { return host; }
         public boolean isEnableSafety() { return enableSafety; }
+        public boolean isEnableUnsafeChatCommands() { return enableUnsafeChatCommands; }
+        public boolean isEnableGuiAutomationTools() { return enableGuiAutomationTools; }
         public int getMaxAreaSize() { return maxAreaSize; }
         public List<String> getAllowedCommands() { return allowedCommands; }
         public int getRequestTimeoutMs() { return requestTimeoutMs; }
@@ -78,10 +82,12 @@ public class MCPConfig {
         private boolean showNotifications = true;
         private String logLevel = "INFO";
         private boolean logCommands = false;
+        private boolean saveScreenshotsForDebug = false;
         
         public boolean isShowNotifications() { return showNotifications; }
         public String getLogLevel() { return logLevel; }
         public boolean isLogCommands() { return logCommands; }
+        public boolean isSaveScreenshotsForDebug() { return saveScreenshotsForDebug; }
     }
     
     public static class SafetyConfig {
