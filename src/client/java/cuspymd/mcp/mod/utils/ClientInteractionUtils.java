@@ -136,9 +136,13 @@ public final class ClientInteractionUtils {
         return runOnClientThread(client -> {
             boolean pressed = !params.has("pressed") || params.get("pressed").getAsBoolean();
             int ticks = clamp(getInt(params, "ticks", 1), 0, MAX_HOLD_TICKS);
-            List<KeyBinding> keys = parseKeys(client, params);
+            ParsedKeys parsedKeys = parseKeys(client, params);
+            List<KeyBinding> keys = parsedKeys.keys();
             for (KeyBinding key : keys) {
                 key.setPressed(pressed);
+            }
+            if (pressed && parsedKeys.hasJump()) {
+                client.player.input.jump();
             }
             if (pressed && ticks > 0) {
                 scheduleKeyRelease(keys, ticks);
@@ -367,13 +371,17 @@ public final class ClientInteractionUtils {
         return "off_hand".equals(hand) || "offhand".equals(hand) ? Hand.OFF_HAND : Hand.MAIN_HAND;
     }
 
-    private static List<KeyBinding> parseKeys(MinecraftClient client, JsonObject params) {
+    private static ParsedKeys parseKeys(MinecraftClient client, JsonObject params) {
         if (params == null || !params.has("keys") || !params.get("keys").isJsonArray()) {
             throw new IllegalArgumentException("Missing required array parameter: keys");
         }
         List<KeyBinding> keys = new ArrayList<>();
+        boolean hasJump = false;
         for (JsonElement element : params.getAsJsonArray("keys")) {
             String key = element.getAsString().toLowerCase(Locale.ROOT);
+            if ("jump".equals(key) || "space".equals(key)) {
+                hasJump = true;
+            }
             keys.add(switch (key) {
                 case "w", "forward" -> client.options.forwardKey;
                 case "s", "back", "backward" -> client.options.backKey;
@@ -385,7 +393,7 @@ public final class ClientInteractionUtils {
                 default -> throw new IllegalArgumentException("Unsupported movement key: " + key);
             });
         }
-        return keys;
+        return new ParsedKeys(keys, hasJump);
     }
 
     private static JsonObject serializeChatMessage(ChatMessageCapture.CapturedMessage message) {
@@ -436,6 +444,9 @@ public final class ClientInteractionUtils {
     private interface TickTask {
         void tick(MinecraftClient client);
         boolean done();
+    }
+
+    private record ParsedKeys(List<KeyBinding> keys, boolean hasJump) {
     }
 
     private static final class BlockAttackTask implements TickTask {
