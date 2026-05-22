@@ -27,6 +27,15 @@ public class ChatMessageCaptureTest {
     }
 
     @Test
+    public void recentMessagesIncludeMessagesCapturedOutsideCommandCapture() throws Exception {
+        capture.captureMessage("reward unlocked");
+
+        ChatMessageCapture.CapturedMessage result = capture.waitForRecentMessage(150, m -> m.contains("reward"));
+
+        assertEquals("reward unlocked", result.text());
+    }
+
+    @Test
     public void startCapturingEnablesQueueAndClearPreviousMessages() {
         capture.startCapturing();
         capture.captureMessage("first");

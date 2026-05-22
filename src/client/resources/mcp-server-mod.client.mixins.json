@@ -4,7 +4,12 @@
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"ExampleClientMixin",
-		"ChatMessageCaptureMixin"
+		"ChatMessageCaptureMixin",
+		"BossBarHudAccessor",
+		"ClientWorldEventCaptureMixin",
+		"InGameHudCaptureMixin",
+		"DisconnectedScreenCaptureMixin",
+		"PacketListenerDisconnectCaptureMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -13,6 +13,7 @@ import cuspymd.mcp.mod.utils.PlayerInfoProvider;
 import cuspymd.mcp.mod.utils.BlockScanner;
 import cuspymd.mcp.mod.utils.ScreenshotUtils;
 import cuspymd.mcp.mod.utils.ScreenAutomationUtils;
+import cuspymd.mcp.mod.utils.ClientInteractionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,6 +311,12 @@ public class HTTPMCPServer {
                 case "close_current_screen" -> {
                     return closeCurrentScreen(arguments);
                 }
+                case "attack_block", "left_click_air", "right_click_block", "right_click_item",
+                     "set_held_slot", "movement_input", "sneak", "wait_for_chat",
+                     "get_scoreboard", "get_client_disconnect", "get_bossbar_actionbar_titles",
+                     "get_nearby_entities", "get_recent_sounds_particles" -> {
+                    return handleClientInteractionTool(toolName, arguments);
+                }
                 case null, default -> {
                     JsonObject error = new JsonObject();
                     error.addProperty("isError", true);
@@ -441,6 +448,26 @@ public class HTTPMCPServer {
             return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
         }
         return awaitJsonResult(ScreenAutomationUtils.closeCurrentScreen(), "close current screen");
+    }
+
+    JsonObject handleClientInteractionTool(String toolName, JsonObject arguments) {
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return switch (toolName) {
+            case "attack_block" -> awaitJsonResult(ClientInteractionUtils.attackBlock(params), "attack block");
+            case "left_click_air" -> awaitJsonResult(ClientInteractionUtils.leftClickAir(params), "left click air");
+            case "right_click_block" -> awaitJsonResult(ClientInteractionUtils.rightClickBlock(params), "right click block");
+            case "right_click_item" -> awaitJsonResult(ClientInteractionUtils.rightClickItem(params), "right click item");
+            case "set_held_slot" -> awaitJsonResult(ClientInteractionUtils.setHeldSlot(params), "set held slot");
+            case "movement_input" -> awaitJsonResult(ClientInteractionUtils.movementInput(params), "movement input");
+            case "sneak" -> awaitJsonResult(ClientInteractionUtils.sneak(params), "sneak");
+            case "wait_for_chat" -> awaitJsonResult(ClientInteractionUtils.waitForChat(params), "wait for chat");
+            case "get_scoreboard" -> awaitJsonResult(ClientInteractionUtils.getScoreboard(), "get scoreboard");
+            case "get_client_disconnect" -> awaitJsonResult(ClientInteractionUtils.getClientDisconnect(), "get client disconnect");
+            case "get_bossbar_actionbar_titles" -> awaitJsonResult(ClientInteractionUtils.getBossbarActionbarTitles(), "get bossbar actionbar titles");
+            case "get_nearby_entities" -> awaitJsonResult(ClientInteractionUtils.getNearbyEntities(params), "get nearby entities");
+            case "get_recent_sounds_particles" -> awaitJsonResult(ClientInteractionUtils.getRecentSoundsParticles(params), "get recent sounds particles");
+            default -> MCPProtocol.createErrorResponse("Unknown tool: " + toolName, null);
+        };
     }
 
     JsonObject awaitJsonResult(CompletableFuture<JsonObject> future, String operationName) {

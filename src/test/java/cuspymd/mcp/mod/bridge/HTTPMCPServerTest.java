@@ -205,10 +205,48 @@ public class HTTPMCPServerTest {
         assertTrue(extractText(result).contains("\"closed\":true"));
     }
 
+    @Test
+    public void testHandleMCPRequest_ToolsCallAttackBlock() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(new MCPConfig());
+        server.clientInteractionResponse = new JsonObject();
+        server.clientInteractionResponse.addProperty("tool", "attack_block");
+
+        JsonObject response = invokeTool(server, "attack_block", new JsonObject(), 13);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"tool\":\"attack_block\""));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallWaitForChat() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(new MCPConfig());
+        server.clientInteractionResponse = new JsonObject();
+        server.clientInteractionResponse.addProperty("matched", true);
+
+        JsonObject response = invokeTool(server, "wait_for_chat", new JsonObject(), 14);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"matched\":true"));
+    }
+
     private JsonObject invokeHandleMCPRequest(HTTPMCPServer server, JsonObject request) throws Exception {
         Method method = HTTPMCPServer.class.getDeclaredMethod("handleMCPRequest", JsonObject.class);
         method.setAccessible(true);
         return (JsonObject) method.invoke(server, request);
+    }
+
+    private JsonObject invokeTool(HTTPMCPServer server, String toolName, JsonObject arguments, int id) throws Exception {
+        JsonObject request = new JsonObject();
+        request.addProperty("jsonrpc", "2.0");
+        request.addProperty("id", id);
+        request.addProperty("method", "tools/call");
+        JsonObject params = new JsonObject();
+        params.addProperty("name", toolName);
+        params.add("arguments", arguments);
+        request.add("params", params);
+        return invokeHandleMCPRequest(server, request);
     }
 
     private MCPConfig guiEnabledConfig() {
@@ -261,6 +299,7 @@ public class HTTPMCPServerTest {
         JsonObject screenResponse;
         JsonObject clickResponse;
         JsonObject closeResponse;
+        JsonObject clientInteractionResponse;
 
         TestableHTTPMCPServer(MCPConfig config) {
             super(config);
@@ -284,6 +323,11 @@ public class HTTPMCPServerTest {
         @Override
         JsonObject closeCurrentScreen(JsonObject arguments) {
             return MCPProtocol.createSuccessResponse(closeResponse.toString());
+        }
+
+        @Override
+        JsonObject handleClientInteractionTool(String toolName, JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(clientInteractionResponse.toString());
         }
     }
 }

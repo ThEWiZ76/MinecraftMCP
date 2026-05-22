@@ -262,8 +262,72 @@ public class MCPProtocol {
             closeCurrentScreenTool.add("inputSchema", emptyInputSchema.deepCopy());
             tools.add(closeCurrentScreenTool);
         }
+
+        addClientInteractionTools(tools);
         
         return tools;
+    }
+
+    private static void addClientInteractionTools(JsonArray tools) {
+        tools.add(tool("attack_block",
+            "Start, hold, release, or hold-until-broken left mouse attack on a target block face. Use for real client-side block breaking.",
+            objectSchema(props(
+                "pos", positionProperty("Target block position"),
+                "face", stringProperty("Block face: north, south, east, west, up, down"),
+                "mode", stringProperty("start, hold, release, or break_until_done"),
+                "ticks", integerProperty("Hold duration in ticks for hold/break_until_done. Default 1, max 200")
+            ), "pos")));
+        tools.add(tool("left_click_air",
+            "Perform one attack swing without a block target. Use for weapons and special held items.",
+            objectSchema(new JsonObject())));
+        tools.add(tool("right_click_block",
+            "Right-click an exact block face with the held item.",
+            objectSchema(props(
+                "pos", positionProperty("Target block position"),
+                "face", stringProperty("Block face: north, south, east, west, up, down"),
+                "hand", stringProperty("main_hand or off_hand. Default main_hand")
+            ), "pos", "face")));
+        tools.add(tool("right_click_item",
+            "Use held item in air.",
+            objectSchema(props("hand", stringProperty("main_hand or off_hand. Default main_hand")))));
+        tools.add(tool("set_held_slot",
+            "Select hotbar slot 0-8.",
+            objectSchema(props("slot", integerProperty("Hotbar slot index 0-8")), "slot")));
+        tools.add(tool("movement_input",
+            "Press or release movement keys for real client movement. Keys: forward, back, left, right, jump, sprint, sneak.",
+            objectSchema(props(
+                "keys", arrayProperty("Movement keys to change"),
+                "pressed", booleanProperty("true presses keys, false releases keys. Default true"),
+                "ticks", integerProperty("Ticks to hold before auto-release. Default 1; 0 means no auto-release")
+            ), "keys")));
+        tools.add(tool("sneak",
+            "Press, release, toggle, or hold sneak/shift.",
+            objectSchema(props(
+                "mode", stringProperty("press, release, toggle, or hold"),
+                "ticks", integerProperty("Ticks to hold when mode=hold")
+            ))));
+        tools.add(tool("wait_for_chat",
+            "Wait until recent or incoming chat contains text or matches regex.",
+            objectSchema(props(
+                "text", stringProperty("Literal text to find"),
+                "regex", stringProperty("Regex to match"),
+                "timeout_ms", integerProperty("Timeout in milliseconds. Default 5000")
+            ))));
+        tools.add(tool("get_scoreboard",
+            "Return visible sidebar scoreboard title, ordered lines, and scores.",
+            objectSchema(new JsonObject())));
+        tools.add(tool("get_client_disconnect",
+            "Return last captured disconnect screen text and exception details, if any.",
+            objectSchema(new JsonObject())));
+        tools.add(tool("get_bossbar_actionbar_titles",
+            "Return visible actionbar/title/bossbar text captured or observable on client.",
+            objectSchema(new JsonObject())));
+        tools.add(tool("get_nearby_entities",
+            "Return nearby entities including armor stands, projectiles, and items within radius.",
+            objectSchema(props("radius", numberProperty("number", "Radius in blocks. Default 16, max 128")))));
+        tools.add(tool("get_recent_sounds_particles",
+            "Return client-observed sound and particle events from last N seconds.",
+            objectSchema(props("seconds", numberProperty("number", "Lookback seconds. Default 5, max 60")))));
     }
     
     public static JsonObject createSuccessResponse(String message) {
@@ -341,6 +405,77 @@ public class MCPProtocol {
         JsonObject property = new JsonObject();
         property.addProperty("type", "integer");
         property.addProperty("description", description);
+        return property;
+    }
+
+    private static JsonObject tool(String name, String description, JsonObject inputSchema) {
+        JsonObject tool = new JsonObject();
+        tool.addProperty("name", name);
+        tool.addProperty("description", description);
+        tool.add("inputSchema", inputSchema);
+        return tool;
+    }
+
+    private static JsonObject objectSchema(JsonObject properties, String... requiredFields) {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "object");
+        schema.add("properties", properties);
+        if (requiredFields.length > 0) {
+            JsonArray required = new JsonArray();
+            for (String field : requiredFields) {
+                required.add(field);
+            }
+            schema.add("required", required);
+        }
+        return schema;
+    }
+
+    private static JsonObject props(Object... entries) {
+        JsonObject properties = new JsonObject();
+        for (int i = 0; i < entries.length; i += 2) {
+            properties.add((String) entries[i], (JsonObject) entries[i + 1]);
+        }
+        return properties;
+    }
+
+    private static JsonObject positionProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "object");
+        property.addProperty("description", description);
+        property.add("properties", props(
+            "x", integerProperty("Block X"),
+            "y", integerProperty("Block Y"),
+            "z", integerProperty("Block Z")
+        ));
+        JsonArray required = new JsonArray();
+        required.add("x");
+        required.add("y");
+        required.add("z");
+        property.add("required", required);
+        return property;
+    }
+
+    private static JsonObject stringProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "string");
+        property.addProperty("description", description);
+        return property;
+    }
+
+    private static JsonObject booleanProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "boolean");
+        property.addProperty("description", description);
+        return property;
+    }
+
+    private static JsonObject arrayProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "array");
+        property.addProperty("description", description);
+        JsonObject item = new JsonObject();
+        item.addProperty("type", "string");
+        property.add("items", item);
         return property;
     }
 }
