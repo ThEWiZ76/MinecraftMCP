@@ -9,7 +9,9 @@ import java.util.List;
 
 public class ChatMessageCapture {
     private static final ChatMessageCapture INSTANCE = new ChatMessageCapture();
+    private static final int MAX_RECENT_MESSAGES = 200;
     private final BlockingQueue<CapturedMessage> messageQueue = new LinkedBlockingQueue<>();
+    private final List<CapturedMessage> recentMessages = new ArrayList<>();
     private volatile boolean capturing = false;
     
     public static ChatMessageCapture getInstance() {
@@ -21,8 +23,21 @@ public class ChatMessageCapture {
     }
 
     public void captureMessage(String message, MessageSource source) {
-        if (capturing && message != null) {
-            messageQueue.offer(new CapturedMessage(message, System.currentTimeMillis(), source));
+        if (message == null) {
+            return;
+        }
+
+        CapturedMessage captured = new CapturedMessage(message, System.currentTimeMillis(), source);
+        synchronized (recentMessages) {
+            recentMessages.add(captured);
+            if (recentMessages.size() > MAX_RECENT_MESSAGES) {
+                recentMessages.remove(0);
+            }
+            recentMessages.notifyAll();
+        }
+
+        if (capturing) {
+            messageQueue.offer(captured);
         }
     }
     
@@ -67,6 +82,33 @@ public class ChatMessageCapture {
         List<CapturedMessage> drained = new ArrayList<>();
         messageQueue.drainTo(drained);
         return drained;
+    }
+
+    public CapturedMessage waitForRecentMessage(long timeoutMs, Predicate<String> filter) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        synchronized (recentMessages) {
+            while (true) {
+                for (CapturedMessage message : recentMessages) {
+                    if (filter.test(message.text())) {
+                        return message;
+                    }
+                }
+
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    return null;
+                }
+                recentMessages.wait(Math.min(remaining, 100));
+            }
+        }
+    }
+
+    public List<CapturedMessage> getRecentMessages(long sinceEpochMs) {
+        synchronized (recentMessages) {
+            return recentMessages.stream()
+                .filter(message -> message.timestampMs() >= sinceEpochMs)
+                .toList();
+        }
     }
 
     public enum MessageSource {

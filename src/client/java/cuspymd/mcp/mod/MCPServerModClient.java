@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import cuspymd.mcp.mod.bridge.IPCServer;
 import cuspymd.mcp.mod.bridge.HTTPMCPServer;
 import cuspymd.mcp.mod.config.MCPConfig;
+import cuspymd.mcp.mod.utils.ClientInteractionUtils;
 import cuspymd.mcp.mod.utils.ScreenshotUtils;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ public class MCPServerModClient implements ClientModInitializer {
 
 		// Register tick end event for deferred screenshots
 		ClientTickEvents.END_CLIENT_TICK.register(ScreenshotUtils::onEndTick);
+		ClientTickEvents.END_CLIENT_TICK.register(ClientInteractionUtils::onEndTick);
 		
 		try {
 			MCPConfig config = MCPConfig.load();

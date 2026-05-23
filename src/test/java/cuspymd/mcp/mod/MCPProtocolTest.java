@@ -2,8 +2,13 @@ package cuspymd.mcp.mod;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import cuspymd.mcp.mod.config.MCPConfig;
 import cuspymd.mcp.mod.server.MCPProtocol;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,5 +31,30 @@ public class MCPProtocolTest {
         assertEquals("image", imageContent.get("type").getAsString());
         assertEquals(base64Data, imageContent.get("data").getAsString());
         assertEquals(mimeType, imageContent.get("mimeType").getAsString());
+    }
+
+    @Test
+    public void toolsListIncludesClientInteractionTools() {
+        JsonArray tools = MCPProtocol.getToolsListResponse(new MCPConfig());
+
+        Set<String> toolNames = StreamSupport.stream(tools.spliterator(), false)
+            .map(element -> element.getAsJsonObject().get("name").getAsString())
+            .collect(Collectors.toSet());
+
+        assertTrue(toolNames.containsAll(Set.of(
+            "attack_block",
+            "left_click_air",
+            "right_click_block",
+            "right_click_item",
+            "set_held_slot",
+            "movement_input",
+            "sneak",
+            "wait_for_chat",
+            "get_scoreboard",
+            "get_client_disconnect",
+            "get_bossbar_actionbar_titles",
+            "get_nearby_entities",
+            "get_recent_sounds_particles"
+        )));
     }
 }
