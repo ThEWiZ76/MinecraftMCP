@@ -23,6 +23,7 @@ public class CommandExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandExecutor.class);
     private static final long COMMAND_MESSAGE_WAIT_MS = 700L;
     private static final long COMMAND_MESSAGE_IDLE_MS = 120L;
+    private static final String DEFAULT_LARGE_EDIT_CONFIRM_COMMAND = "fastasyncworldedit:/confirm";
     private static final Set<String> TP_VERBS = Set.of("tp", "teleport");
     private static final Set<String> GIVE_VERBS = Set.of("give");
     private static final Set<String> FILL_VERBS = Set.of("fill");
@@ -77,6 +78,15 @@ public class CommandExecutor {
             }
 
             JsonArray commandsArray = arguments.getAsJsonArray("commands");
+            boolean autoConfirmLargeEdits = arguments.has("auto_confirm_large_edits")
+                && arguments.get("auto_confirm_large_edits").getAsBoolean();
+            String confirmCommand = arguments.has("confirm_command")
+                ? normalizeUnsafeChatCommand(arguments.get("confirm_command").getAsString())
+                : DEFAULT_LARGE_EDIT_CONFIRM_COMMAND;
+            if (autoConfirmLargeEdits && confirmCommand.isEmpty()) {
+                return MCPProtocol.createErrorResponse("confirm_command is blank after normalization", null);
+            }
+
             List<String> commands = new ArrayList<>();
             for (int i = 0; i < commandsArray.size(); i++) {
                 String normalized = normalizeUnsafeChatCommand(commandsArray.get(i).getAsString());
@@ -86,7 +96,7 @@ public class CommandExecutor {
                 commands.add(normalized);
             }
 
-            return executeCommandsSequentially(commands);
+            return executeCommandsSequentially(commands, autoConfirmLargeEdits, confirmCommand);
         } catch (Exception e) {
             LOGGER.error("Error executing unsafe chat commands", e);
             return MCPProtocol.createErrorResponse("Internal error: " + e.getMessage(), null);
@@ -94,6 +104,14 @@ public class CommandExecutor {
     }
     
     private JsonObject executeCommandsSequentially(List<String> commands) {
+        return executeCommandsSequentially(commands, false, DEFAULT_LARGE_EDIT_CONFIRM_COMMAND);
+    }
+
+    private JsonObject executeCommandsSequentially(
+        List<String> commands,
+        boolean autoConfirmLargeEdits,
+        String confirmCommand
+    ) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) {
             return MCPProtocol.createErrorResponse("Player or world is not available", null);
@@ -121,9 +139,25 @@ public class CommandExecutor {
                 CommandResult analyzedResult =
                     applyOutcomeAnalysis(executionResult, analysisMessages, commandMessages);
                 results.add(analyzedResult);
+
+                if (autoConfirmLargeEdits && hasLargeEditConfirmationPrompt(commandMessages)) {
+                    capture.drainAvailableCapturedMessages();
+                    long confirmStartedAt = System.currentTimeMillis();
+                    CommandResult confirmExecutionResult = executeCommandWithTimeout(confirmCommand);
+                    List<ChatMessageCapture.CapturedMessage> capturedForConfirm = collectMessagesForCommand(capture);
+                    List<ChatMessageCapture.CapturedMessage> confirmWindowMessages =
+                        keepMessagesAfter(confirmStartedAt, capturedForConfirm);
+                    List<String> confirmMessages = toTextList(confirmWindowMessages);
+                    List<String> confirmAnalysisMessages = selectMessagesForOutcome(confirmCommand, confirmWindowMessages);
+                    allCapturedMessages.addAll(confirmMessages);
+
+                    CommandResult analyzedConfirmResult =
+                        applyOutcomeAnalysis(confirmExecutionResult, confirmAnalysisMessages, confirmMessages);
+                    results.add(analyzedConfirmResult);
+                }
             }
 
-            JsonObject responseJson = buildExecuteCommandsResponse(commands.size(), results, allCapturedMessages);
+            JsonObject responseJson = buildExecuteCommandsResponse(results.size(), results, allCapturedMessages);
             return MCPProtocol.createSuccessResponse(responseJson.toString());
             
         } finally {
@@ -269,6 +303,20 @@ public class CommandExecutor {
         }
 
         return normalized;
+    }
+
+    static boolean hasLargeEditConfirmationPrompt(List<String> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return false;
+        }
+
+        for (String message : messages) {
+            if (message != null && message.contains("Use //confirm")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static CommandResult buildExecutionError(String command, String summary, long startTime) {

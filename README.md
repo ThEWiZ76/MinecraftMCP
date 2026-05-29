@@ -192,11 +192,14 @@ Execute one or more arbitrary player chat commands sequentially for plugin or ad
 
 **Parameters:**
 - `commands` (array): List of commands, with or without a leading slash
+- `auto_confirm_large_edits` (boolean, optional): When true, automatically sends the FAWE confirm command after a command response asks for `//confirm`
+- `confirm_command` (string, optional): Confirm command used by `auto_confirm_large_edits`; defaults to `/fastasyncworldedit:/confirm`
 
 **Notes:**
 - Available only when `server.enableUnsafeChatCommands` is `true`
 - Bypasses the normal `execute_commands` allowlist and safety validator
 - Intended for trusted local testing only
+- Useful for FastAsyncWorldEdit commands that queue a large edit and require confirmation before the pending action expires
 
 **Example Request:**
 ```json
@@ -209,6 +212,22 @@ Execute one or more arbitrary player chat commands sequentially for plugin or ad
         "/customgear ammo",
         "/mtgrinding debug"
       ]
+    }
+  }
+}
+```
+
+**FastAsyncWorldEdit confirmation example:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "execute_chat_commands",
+    "arguments": {
+      "commands": [
+        "//ore 1,deepslate deepslate_diamond_ore 7 5 100 -64 16"
+      ],
+      "auto_confirm_large_edits": true
     }
   }
 }

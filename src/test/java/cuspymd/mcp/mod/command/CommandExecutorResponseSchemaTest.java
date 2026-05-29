@@ -19,6 +19,25 @@ public class CommandExecutorResponseSchemaTest {
     }
 
     @Test
+    public void unsafeChatCommandsNormalizeFaweConfirmAlias() {
+        assertEquals(
+            "fastasyncworldedit:/confirm",
+            CommandExecutor.normalizeUnsafeChatCommand("/fastasyncworldedit:/confirm")
+        );
+    }
+
+    @Test
+    public void detectsFaweLargeEditConfirmPrompt() {
+        assertTrue(CommandExecutor.hasLargeEditConfirmationPrompt(List.of(
+            "(FAWE) Your selection is large ((3387, -64, 2373) -> (5751, 319, 5246), containing 2608948224 blocks). Use //confirm to execute /ore 1,deepslate deepslate_diamond_ore 7 5 100 -64 16"
+        )));
+        assertFalse(CommandExecutor.hasLargeEditConfirmationPrompt(List.of(
+            "(FAWE) Global mask set.",
+            "(FAWE) 3079765 blocks affected"
+        )));
+    }
+
+    @Test
     public void unsafeChatCommandsRejectBlankInput() {
         assertTrue(CommandExecutor.normalizeUnsafeChatCommand("   ").isEmpty());
     }
