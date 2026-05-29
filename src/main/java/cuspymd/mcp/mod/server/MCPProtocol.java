@@ -100,7 +100,7 @@ public class MCPProtocol {
                 "This tool is intentionally unsafe and bypasses the normal execute_commands allowlist and safety validator.\n\n" +
                 "Use this for plugin commands such as /customgear, /mtgrinding, or other server commands that are not part of the safe vanilla tool.\n\n" +
                 "Input accepts either '/command args' or 'command args'. Commands are normalized before dispatch. " +
-                "For large FastAsyncWorldEdit operations, set auto_confirm_large_edits=true to send the configured confirm command immediately after each submitted command.\n\n" +
+                "For large FastAsyncWorldEdit operations, set auto_confirm_large_edits=true to send the configured confirm command shortly after each submitted command.\n\n" +
                 "Response schema mirrors execute_commands where practical, including per-command status, summary, and captured chat messages."
             );
 
@@ -109,7 +109,7 @@ public class MCPProtocol {
 
             JsonObject autoConfirmProperty = new JsonObject();
             autoConfirmProperty.addProperty("type", "boolean");
-            autoConfirmProperty.addProperty("description", "Automatically send the FastAsyncWorldEdit confirm command immediately after each submitted command (default: false).");
+            autoConfirmProperty.addProperty("description", "Automatically send the FastAsyncWorldEdit confirm command shortly after each submitted command (default: false).");
             autoConfirmProperty.addProperty("default", false);
 
             JsonObject confirmCommandProperty = new JsonObject();
@@ -117,8 +117,16 @@ public class MCPProtocol {
             confirmCommandProperty.addProperty("description", "Command used when auto_confirm_large_edits is true (default: /fastasyncworldedit:/confirm).");
             confirmCommandProperty.addProperty("default", "/fastasyncworldedit:/confirm");
 
+            JsonObject confirmDelayProperty = new JsonObject();
+            confirmDelayProperty.addProperty("type", "integer");
+            confirmDelayProperty.addProperty("description", "Delay in milliseconds before auto-confirm is sent (default: 100, max: 2000).");
+            confirmDelayProperty.addProperty("default", 100);
+            confirmDelayProperty.addProperty("minimum", 0);
+            confirmDelayProperty.addProperty("maximum", 2000);
+
             unsafeProperties.add("auto_confirm_large_edits", autoConfirmProperty);
             unsafeProperties.add("confirm_command", confirmCommandProperty);
+            unsafeProperties.add("auto_confirm_delay_ms", confirmDelayProperty);
 
             executeChatCommandsTool.add("inputSchema", unsafeInputSchema);
             tools.add(executeChatCommandsTool);

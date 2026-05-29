@@ -24,6 +24,8 @@ public class CommandExecutor {
     private static final long COMMAND_MESSAGE_WAIT_MS = 700L;
     private static final long COMMAND_MESSAGE_IDLE_MS = 120L;
     private static final String DEFAULT_LARGE_EDIT_CONFIRM_COMMAND = "fastasyncworldedit:/confirm";
+    private static final int DEFAULT_LARGE_EDIT_CONFIRM_DELAY_MS = 100;
+    private static final int MAX_LARGE_EDIT_CONFIRM_DELAY_MS = 2000;
     private static final Set<String> TP_VERBS = Set.of("tp", "teleport");
     private static final Set<String> GIVE_VERBS = Set.of("give");
     private static final Set<String> FILL_VERBS = Set.of("fill");
@@ -83,6 +85,7 @@ public class CommandExecutor {
             String confirmCommand = arguments.has("confirm_command")
                 ? normalizeUnsafeChatCommand(arguments.get("confirm_command").getAsString())
                 : DEFAULT_LARGE_EDIT_CONFIRM_COMMAND;
+            int confirmDelayMs = parseAutoConfirmDelayMs(arguments);
             if (autoConfirmLargeEdits && confirmCommand.isEmpty()) {
                 return MCPProtocol.createErrorResponse("confirm_command is blank after normalization", null);
             }
@@ -96,7 +99,7 @@ public class CommandExecutor {
                 commands.add(normalized);
             }
 
-            return executeCommandsSequentially(commands, autoConfirmLargeEdits, confirmCommand);
+            return executeCommandsSequentially(commands, autoConfirmLargeEdits, confirmCommand, confirmDelayMs);
         } catch (Exception e) {
             LOGGER.error("Error executing unsafe chat commands", e);
             return MCPProtocol.createErrorResponse("Internal error: " + e.getMessage(), null);
@@ -104,13 +107,14 @@ public class CommandExecutor {
     }
     
     private JsonObject executeCommandsSequentially(List<String> commands) {
-        return executeCommandsSequentially(commands, false, DEFAULT_LARGE_EDIT_CONFIRM_COMMAND);
+        return executeCommandsSequentially(commands, false, DEFAULT_LARGE_EDIT_CONFIRM_COMMAND, DEFAULT_LARGE_EDIT_CONFIRM_DELAY_MS);
     }
 
     private JsonObject executeCommandsSequentially(
         List<String> commands,
         boolean autoConfirmLargeEdits,
-        String confirmCommand
+        String confirmCommand,
+        int confirmDelayMs
     ) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) {
@@ -133,6 +137,7 @@ public class CommandExecutor {
                 long confirmStartedAt = 0L;
 
                 if (autoConfirmLargeEdits) {
+                    sleepBeforeAutoConfirm(confirmDelayMs);
                     confirmStartedAt = System.currentTimeMillis();
                     confirmExecutionResult = executeCommandWithTimeout(confirmCommand);
                 }
@@ -321,6 +326,27 @@ public class CommandExecutor {
         }
 
         return false;
+    }
+
+    static int parseAutoConfirmDelayMs(JsonObject arguments) {
+        if (arguments == null || !arguments.has("auto_confirm_delay_ms")) {
+            return DEFAULT_LARGE_EDIT_CONFIRM_DELAY_MS;
+        }
+
+        int requestedDelay = arguments.get("auto_confirm_delay_ms").getAsInt();
+        return Math.max(0, Math.min(requestedDelay, MAX_LARGE_EDIT_CONFIRM_DELAY_MS));
+    }
+
+    private static void sleepBeforeAutoConfirm(int delayMs) {
+        if (delayMs <= 0) {
+            return;
+        }
+
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static CommandResult buildExecutionError(String command, String summary, long startTime) {

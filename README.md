@@ -192,8 +192,9 @@ Execute one or more arbitrary player chat commands sequentially for plugin or ad
 
 **Parameters:**
 - `commands` (array): List of commands, with or without a leading slash
-- `auto_confirm_large_edits` (boolean, optional): When true, automatically sends the FAWE confirm command immediately after each submitted command
+- `auto_confirm_large_edits` (boolean, optional): When true, automatically sends the FAWE confirm command shortly after each submitted command
 - `confirm_command` (string, optional): Confirm command used by `auto_confirm_large_edits`; defaults to `/fastasyncworldedit:/confirm`
+- `auto_confirm_delay_ms` (integer, optional): Delay before auto-confirm is sent; defaults to `100`, maximum `2000`
 
 **Notes:**
 - Available only when `server.enableUnsafeChatCommands` is `true`
@@ -227,7 +228,8 @@ Execute one or more arbitrary player chat commands sequentially for plugin or ad
       "commands": [
         "//ore 1,deepslate deepslate_diamond_ore 7 5 100 -64 16"
       ],
-      "auto_confirm_large_edits": true
+      "auto_confirm_large_edits": true,
+      "auto_confirm_delay_ms": 100
     }
   }
 }

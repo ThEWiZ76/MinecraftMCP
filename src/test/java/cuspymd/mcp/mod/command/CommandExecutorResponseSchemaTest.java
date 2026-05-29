@@ -43,6 +43,20 @@ public class CommandExecutorResponseSchemaTest {
     }
 
     @Test
+    public void autoConfirmDelayUsesDefaultAndClamp() {
+        JsonObject noDelay = new JsonObject();
+        assertEquals(100, CommandExecutor.parseAutoConfirmDelayMs(noDelay));
+
+        JsonObject negativeDelay = new JsonObject();
+        negativeDelay.addProperty("auto_confirm_delay_ms", -1);
+        assertEquals(0, CommandExecutor.parseAutoConfirmDelayMs(negativeDelay));
+
+        JsonObject tooLargeDelay = new JsonObject();
+        tooLargeDelay.addProperty("auto_confirm_delay_ms", 5000);
+        assertEquals(2000, CommandExecutor.parseAutoConfirmDelayMs(tooLargeDelay));
+    }
+
+    @Test
     public void responseIncludesCountsAndPerCommandMessages() {
         CommandResult applied = CommandResult.builder()
             .accepted(true)
