@@ -192,7 +192,7 @@ Execute one or more arbitrary player chat commands sequentially for plugin or ad
 
 **Parameters:**
 - `commands` (array): List of commands, with or without a leading slash
-- `auto_confirm_large_edits` (boolean, optional): When true, automatically sends the FAWE confirm command after a command response asks for `//confirm`
+- `auto_confirm_large_edits` (boolean, optional): When true, automatically sends the FAWE confirm command immediately after each submitted command
 - `confirm_command` (string, optional): Confirm command used by `auto_confirm_large_edits`; defaults to `/fastasyncworldedit:/confirm`
 
 **Notes:**

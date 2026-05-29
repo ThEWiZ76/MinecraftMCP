@@ -129,6 +129,14 @@ public class CommandExecutor {
                 capture.drainAvailableCapturedMessages();
                 long commandStartedAt = System.currentTimeMillis();
                 CommandResult executionResult = executeCommandWithTimeout(command);
+                CommandResult confirmExecutionResult = null;
+                long confirmStartedAt = 0L;
+
+                if (autoConfirmLargeEdits) {
+                    confirmStartedAt = System.currentTimeMillis();
+                    confirmExecutionResult = executeCommandWithTimeout(confirmCommand);
+                }
+
                 List<ChatMessageCapture.CapturedMessage> capturedForCommand = collectMessagesForCommand(capture);
                 List<ChatMessageCapture.CapturedMessage> commandWindowMessages =
                     keepMessagesAfter(commandStartedAt, capturedForCommand);
@@ -140,13 +148,9 @@ public class CommandExecutor {
                     applyOutcomeAnalysis(executionResult, analysisMessages, commandMessages);
                 results.add(analyzedResult);
 
-                if (autoConfirmLargeEdits && hasLargeEditConfirmationPrompt(commandMessages)) {
-                    capture.drainAvailableCapturedMessages();
-                    long confirmStartedAt = System.currentTimeMillis();
-                    CommandResult confirmExecutionResult = executeCommandWithTimeout(confirmCommand);
-                    List<ChatMessageCapture.CapturedMessage> capturedForConfirm = collectMessagesForCommand(capture);
+                if (confirmExecutionResult != null) {
                     List<ChatMessageCapture.CapturedMessage> confirmWindowMessages =
-                        keepMessagesAfter(confirmStartedAt, capturedForConfirm);
+                        keepMessagesAfter(confirmStartedAt, capturedForCommand);
                     List<String> confirmMessages = toTextList(confirmWindowMessages);
                     List<String> confirmAnalysisMessages = selectMessagesForOutcome(confirmCommand, confirmWindowMessages);
                     allCapturedMessages.addAll(confirmMessages);

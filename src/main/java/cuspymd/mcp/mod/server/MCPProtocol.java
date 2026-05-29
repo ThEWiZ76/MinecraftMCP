@@ -100,7 +100,7 @@ public class MCPProtocol {
                 "This tool is intentionally unsafe and bypasses the normal execute_commands allowlist and safety validator.\n\n" +
                 "Use this for plugin commands such as /customgear, /mtgrinding, or other server commands that are not part of the safe vanilla tool.\n\n" +
                 "Input accepts either '/command args' or 'command args'. Commands are normalized before dispatch. " +
-                "For large FastAsyncWorldEdit operations, set auto_confirm_large_edits=true to immediately send the configured confirm command when FAWE asks for //confirm.\n\n" +
+                "For large FastAsyncWorldEdit operations, set auto_confirm_large_edits=true to send the configured confirm command immediately after each submitted command.\n\n" +
                 "Response schema mirrors execute_commands where practical, including per-command status, summary, and captured chat messages."
             );
 
@@ -109,7 +109,7 @@ public class MCPProtocol {
 
             JsonObject autoConfirmProperty = new JsonObject();
             autoConfirmProperty.addProperty("type", "boolean");
-            autoConfirmProperty.addProperty("description", "Automatically confirm FastAsyncWorldEdit large-edit prompts that ask for //confirm (default: false).");
+            autoConfirmProperty.addProperty("description", "Automatically send the FastAsyncWorldEdit confirm command immediately after each submitted command (default: false).");
             autoConfirmProperty.addProperty("default", false);
 
             JsonObject confirmCommandProperty = new JsonObject();
