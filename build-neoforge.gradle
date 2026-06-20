@@ -1,0 +1,89 @@
+plugins {
+	id 'java-library'
+	id 'maven-publish'
+	id 'net.neoforged.gradle.userdev' version "${neogradle_version}"
+}
+
+version = project.neoforge_mod_version
+group = project.maven_group
+
+base {
+	archivesName = "${project.archives_base_name}-neoforge"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+sourceSets {
+	main {
+		java {
+			setSrcDirs(['src/neoforge/java'])
+		}
+		resources {
+			setSrcDirs(['src/neoforge/resources', 'src/main/resources'])
+			exclude 'fabric.mod.json'
+			exclude 'mcp-server-mod*.mixins.json'
+			exclude 'log4j2.xml'
+		}
+	}
+	test {
+		java {
+			setSrcDirs([])
+		}
+	}
+}
+
+runs {
+	configureEach {
+		systemProperty 'forge.logging.console.level', 'info'
+		workingDirectory project.layout.projectDirectory.dir('run-neoforge').dir(name)
+		modSource project.sourceSets.main
+	}
+
+	client {
+		systemProperty 'neoforge.enabledGameTestNamespaces', project.archives_base_name
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation "net.neoforged:neoforge:${neoforge_version}"
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(ProcessResources).configureEach {
+	def replaceProperties = [
+		minecraft_version: project.neoforge_minecraft_version,
+		minecraft_version_range: project.neoforge_minecraft_version_range,
+		neoforge_version: project.neoforge_version,
+		loader_version_range: project.neoforge_loader_version_range,
+		mod_id: project.neoforge_mod_id,
+		mod_name: project.neoforge_mod_name,
+		mod_license: 'CC0-1.0',
+		mod_version: project.neoforge_mod_version
+	]
+	inputs.properties replaceProperties
+	filesMatching(['META-INF/neoforge.mods.toml']) {
+		expand replaceProperties
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release = 21
+}
+
+test {
+	useJUnitPlatform()
+}
+
+publishing {
+	publications {
+		create("mavenNeoForge", MavenPublication) {
+			from components.java
+		}
+	}
+}

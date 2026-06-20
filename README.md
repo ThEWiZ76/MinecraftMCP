@@ -1,6 +1,6 @@
 # Minecraft MCP Server Mod
 
-A Fabric mod that implements a Model Context Protocol (MCP) server, enabling AI assistants like Claude to interact with Minecraft through structured commands.
+A Minecraft client mod that implements a Model Context Protocol (MCP) server, enabling AI assistants like Claude to interact with Minecraft through structured commands.
 
 ## Overview
 
@@ -14,19 +14,52 @@ This mod creates an HTTP server within the Minecraft client that accepts MCP pro
 - **Configurable Settings**: Customizable safety limits, server settings, and command permissions
 - **Real-time Feedback**: Detailed execution results including block counts and entity information
 
-## Requirements
+## Fabric Requirements
 
 - **Minecraft**: 1.21.10
 - **Fabric Loader**: 0.17.3 or higher
 - **Fabric API**: 0.135.0+1.21.10
 - **Java**: 21 or higher
 
+## NeoForge Requirements
+
+- **Minecraft**: 1.21.1
+- **NeoForge**: 21.1.233 or higher in the 1.21.1 line
+- **Java**: 21 or higher
+
+The NeoForge build is a separate artifact and currently supports the core MCP client workflow:
+
+- `execute_commands`
+- `execute_chat_commands` when enabled in config
+- `get_player_info`
+- `get_blocks_in_area`
+- `set_held_slot`
+- `movement_input`
+- `sneak`
+- `wait_for_chat`
+
+Fabric-only tools such as screenshots, GUI automation, block attack, right-click interactions, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
+
 ## Installation
+
+### Fabric
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 1.21.10
 2. Download and install [Fabric API](https://modrinth.com/mod/fabric-api)
 3. Place the mod JAR file in your `mods` folder
 4. Launch Minecraft with the Fabric profile
+
+### NeoForge
+
+1. Install NeoForge for Minecraft 1.21.1.
+2. Build the NeoForge artifact:
+
+```bash
+./gradlew -b build-neoforge.gradle build
+```
+
+3. Place `build/libs/mcp-server-mod-neoforge-1.1.0+neoforge.mc1.21.1.jar` in the NeoForge profile `mods` folder.
+4. Launch Minecraft with the NeoForge profile.
 
 ## Usage
 
@@ -36,7 +69,8 @@ The MCP server starts automatically when you launch Minecraft with the mod insta
 
 ### Configuration
 
-The mod creates a configuration file at `config/mcp-client.json`:
+The Fabric build creates a configuration file at `config/mcp-client.json`.
+The NeoForge build creates `config/mcp-client-neoforge.json`.
 
 ```json
 {
@@ -121,14 +155,30 @@ The AI can execute commands like:
 
 ### Building
 
+Fabric:
+
 ```bash
 ./gradlew build
 ```
 
+NeoForge:
+
+```bash
+./gradlew -b build-neoforge.gradle build
+```
+
 ### Running in Development
+
+Fabric:
 
 ```bash
 ./gradlew runClient
+```
+
+NeoForge:
+
+```bash
+./gradlew -b build-neoforge.gradle runClient
 ```
 
 ### Project Structure
