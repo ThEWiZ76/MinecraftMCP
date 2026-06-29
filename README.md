@@ -34,12 +34,14 @@ The NeoForge build is a separate artifact and currently supports the core MCP cl
 - `get_player_info`
 - `get_blocks_in_area`
 - `get_current_screen`, `click_screen_button`, `click_screen_entry`, `click_screen_xy`, `click_screen_slot`, `wait_for_screen`, `close_current_screen` when GUI automation is enabled
+- `right_click_block`
+- `right_click_item`
 - `set_held_slot`
 - `movement_input`
 - `sneak`
 - `wait_for_chat`
 
-Fabric-only tools such as screenshots, block attack, right-click interactions, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
+Fabric-only tools such as screenshots, block attack, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
 
 ## Installation
 
@@ -129,6 +131,8 @@ The server supports these tools:
 - `click_screen_xy` - Click raw scaled GUI coordinates when `server.enableGuiAutomationTools` is enabled
 - `wait_for_screen` - Wait for a screen title/class before continuing menu automation
 - `close_current_screen` - Close the current GUI when `server.enableGuiAutomationTools` is enabled
+- `right_click_block` - Right-click an exact block face in-world
+- `right_click_item` - Use the held item in air
 
 `execute_chat_commands` and the GUI automation tools are intentionally disabled by default so the safe vanilla command surface remains unchanged.
 
@@ -397,6 +401,22 @@ Click a slot in the currently open handled inventory screen.
 **Notes:**
 - Available only when `server.enableGuiAutomationTools` is `true`
 - Intended for local GUI testing and inventory automation
+
+### Tool: right_click_block
+
+Right-click an exact block face in the world with the selected hand.
+
+**Parameters:**
+- `pos` (object, required): Target block position `{x,y,z}`
+- `face` (string, required): Block face: `north`, `south`, `east`, `west`, `up`, or `down`
+- `hand` (string, optional): `main_hand` or `off_hand`; defaults to `main_hand`
+
+### Tool: right_click_item
+
+Use the held item in air.
+
+**Parameters:**
+- `hand` (string, optional): `main_hand` or `off_hand`; defaults to `main_hand`
 
 ### Tool: click_screen_button
 

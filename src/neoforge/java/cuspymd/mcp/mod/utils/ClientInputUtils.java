@@ -7,7 +7,13 @@ import cuspymd.mcp.mod.command.ChatMessageCapture;
 import cuspymd.mcp.mod.server.MCPProtocol;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -21,6 +27,45 @@ public final class ClientInputUtils {
     private static final List<KeyReleaseTask> KEY_RELEASE_TASKS = new ArrayList<>();
 
     private ClientInputUtils() {
+    }
+
+    public static JsonObject rightClickBlock(JsonObject params) {
+        return await(runOnClient(client -> {
+            requireWorldUse(client);
+            BlockPos pos = parseBlockPos(params);
+            Direction direction = parseDirection(params, "face", Direction.UP);
+            InteractionHand hand = parseHand(params);
+            Vec3 hitPos = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(direction.getNormal()).scale(0.5));
+            InteractionResult interactionResult = client.gameMode.useItemOn(client.player, hand, new BlockHitResult(hitPos, direction, pos, false));
+            if (interactionResult.shouldSwing()) {
+                client.player.swing(hand);
+            }
+
+            JsonObject result = new JsonObject();
+            result.addProperty("accepted", interactionResult.consumesAction());
+            result.addProperty("result", interactionResult.name());
+            result.add("pos", serializePos(pos));
+            result.addProperty("face", direction.getSerializedName());
+            result.addProperty("hand", hand.name());
+            return result;
+        }), "right click block");
+    }
+
+    public static JsonObject rightClickItem(JsonObject params) {
+        return await(runOnClient(client -> {
+            requireWorldUse(client);
+            InteractionHand hand = parseHand(params);
+            InteractionResult interactionResult = client.gameMode.useItem(client.player, hand);
+            if (interactionResult.shouldSwing()) {
+                client.player.swing(hand);
+            }
+
+            JsonObject result = new JsonObject();
+            result.addProperty("accepted", interactionResult.consumesAction());
+            result.addProperty("result", interactionResult.name());
+            result.addProperty("hand", hand.name());
+            return result;
+        }), "right click item");
     }
 
     public static JsonObject setHeldSlot(JsonObject params) {
@@ -136,6 +181,36 @@ public final class ClientInputUtils {
         if (client.player == null || client.level == null) throw new IllegalStateException("Player/world not available");
     }
 
+    private static void requireWorldUse(Minecraft client) {
+        if (client.player == null || client.level == null || client.gameMode == null) {
+            throw new IllegalStateException("Player/world/game mode not available");
+        }
+    }
+
+    private static BlockPos parseBlockPos(JsonObject params) {
+        if (params == null || !params.has("pos")) {
+            throw new IllegalArgumentException("Missing required parameter: pos");
+        }
+        JsonObject pos = params.getAsJsonObject("pos");
+        return new BlockPos(pos.get("x").getAsInt(), pos.get("y").getAsInt(), pos.get("z").getAsInt());
+    }
+
+    private static Direction parseDirection(JsonObject params, String field, Direction fallback) {
+        if (params == null || !params.has(field)) {
+            return fallback;
+        }
+        try {
+            return Direction.valueOf(params.get(field).getAsString().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unsupported direction: " + params.get(field).getAsString(), e);
+        }
+    }
+
+    private static InteractionHand parseHand(JsonObject params) {
+        String hand = getString(params, "hand", "main_hand").toLowerCase(Locale.ROOT);
+        return "off_hand".equals(hand) || "offhand".equals(hand) ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+    }
+
     private static List<KeyMapping> parseKeys(Minecraft client, JsonObject params) {
         if (params == null || !params.has("keys") || !params.get("keys").isJsonArray()) {
             throw new IllegalArgumentException("Missing required array parameter: keys");
@@ -165,6 +240,14 @@ public final class ClientInputUtils {
 
     private static String getString(JsonObject params, String field, String fallback) {
         return params != null && params.has(field) ? params.get(field).getAsString() : fallback;
+    }
+
+    private static JsonObject serializePos(BlockPos pos) {
+        JsonObject result = new JsonObject();
+        result.addProperty("x", pos.getX());
+        result.addProperty("y", pos.getY());
+        result.addProperty("z", pos.getZ());
+        return result;
     }
 
     private static int getInt(JsonObject params, String field, int fallback) {

@@ -45,6 +45,14 @@ public final class MCPProtocol {
         if (config != null && config.getServer().isEnableGuiAutomationTools()) {
             addGuiAutomationTools(tools);
         }
+        tools.add(tool("right_click_block", "Right-click an exact block face with the held item.", objectSchema(props(
+            "pos", positionProperty("Target block position"),
+            "face", stringProperty("Block face: north, south, east, west, up, down"),
+            "hand", stringProperty("main_hand or off_hand. Default main_hand")
+        ), "pos", "face")));
+        tools.add(tool("right_click_item", "Use held item in air.", objectSchema(props(
+            "hand", stringProperty("main_hand or off_hand. Default main_hand")
+        ))));
         tools.add(tool("set_held_slot", "Select hotbar slot 0-8.", objectSchema(props("slot", integerProperty("Hotbar slot 0-8")), "slot")));
         tools.add(tool("movement_input", "Press/release movement keys: forward, back, left, right, jump, sprint, sneak.", objectSchema(props(
             "keys", arrayProperty("Movement keys"),
