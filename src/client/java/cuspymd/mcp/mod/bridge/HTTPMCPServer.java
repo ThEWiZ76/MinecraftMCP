@@ -308,6 +308,18 @@ public class HTTPMCPServer {
                 case "click_screen_slot" -> {
                     return clickScreenSlot(arguments);
                 }
+                case "click_screen_button" -> {
+                    return clickScreenButton(arguments);
+                }
+                case "click_screen_entry" -> {
+                    return clickScreenEntry(arguments);
+                }
+                case "click_screen_xy" -> {
+                    return clickScreenXy(arguments);
+                }
+                case "wait_for_screen" -> {
+                    return waitForScreen(arguments);
+                }
                 case "close_current_screen" -> {
                     return closeCurrentScreen(arguments);
                 }
@@ -441,6 +453,38 @@ public class HTTPMCPServer {
         }
         JsonObject params = arguments != null ? arguments : new JsonObject();
         return awaitJsonResult(ScreenAutomationUtils.clickScreenSlot(params), "click screen slot");
+    }
+
+    JsonObject clickScreenButton(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return awaitJsonResult(ScreenAutomationUtils.clickScreenButton(params), "click screen button");
+    }
+
+    JsonObject clickScreenEntry(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return awaitJsonResult(ScreenAutomationUtils.clickScreenEntry(params), "click screen entry");
+    }
+
+    JsonObject clickScreenXy(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return awaitJsonResult(ScreenAutomationUtils.clickScreenXy(params), "click screen xy");
+    }
+
+    JsonObject waitForScreen(JsonObject arguments) {
+        if (!config.getServer().isEnableGuiAutomationTools()) {
+            return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+        }
+        JsonObject params = arguments != null ? arguments : new JsonObject();
+        return awaitJsonResult(ScreenAutomationUtils.waitForScreen(params), "wait for screen");
     }
 
     JsonObject closeCurrentScreen(JsonObject arguments) {

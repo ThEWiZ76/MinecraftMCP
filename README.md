@@ -33,12 +33,13 @@ The NeoForge build is a separate artifact and currently supports the core MCP cl
 - `execute_chat_commands` when enabled in config
 - `get_player_info`
 - `get_blocks_in_area`
+- `get_current_screen`, `click_screen_button`, `click_screen_entry`, `click_screen_xy`, `click_screen_slot`, `wait_for_screen`, `close_current_screen` when GUI automation is enabled
 - `set_held_slot`
 - `movement_input`
 - `sneak`
 - `wait_for_chat`
 
-Fabric-only tools such as screenshots, GUI automation, block attack, right-click interactions, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
+Fabric-only tools such as screenshots, block attack, right-click interactions, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
 
 ## Installation
 
@@ -123,6 +124,10 @@ The server supports these tools:
 - `take_screenshot` - Capture game screen with optional camera control
 - `get_current_screen` - Inspect the currently open GUI when `server.enableGuiAutomationTools` is enabled
 - `click_screen_slot` - Click a slot in the current handled GUI when `server.enableGuiAutomationTools` is enabled
+- `click_screen_button` - Click a visible screen button by text or index when `server.enableGuiAutomationTools` is enabled
+- `click_screen_entry` - Click a detected world/server/list entry by text/name or index when `server.enableGuiAutomationTools` is enabled
+- `click_screen_xy` - Click raw scaled GUI coordinates when `server.enableGuiAutomationTools` is enabled
+- `wait_for_screen` - Wait for a screen title/class before continuing menu automation
 - `close_current_screen` - Close the current GUI when `server.enableGuiAutomationTools` is enabled
 
 `execute_chat_commands` and the GUI automation tools are intentionally disabled by default so the safe vanilla command surface remains unchanged.
@@ -376,7 +381,7 @@ Capture a screenshot of the current Minecraft game screen. Optionally, you can s
 
 ### Tool: get_current_screen
 
-Inspect the currently open screen. For handled inventory screens, the response includes the screen title, class name, sync id, cursor stack, and all slot contents.
+Inspect the currently open screen. The response includes the screen title, class name, size, detected buttons, and detected list entries. For handled inventory screens, it also includes sync id, cursor stack, and all slot contents.
 
 **Parameters:** None required
 
@@ -392,6 +397,68 @@ Click a slot in the currently open handled inventory screen.
 **Notes:**
 - Available only when `server.enableGuiAutomationTools` is `true`
 - Intended for local GUI testing and inventory automation
+
+### Tool: click_screen_button
+
+Click a visible button in the current screen. Useful for start menu and submenu navigation.
+
+**Parameters:**
+- `text` (string, optional): Button text to match, partial and case-insensitive by default
+- `index` (integer, optional): Button index from `get_current_screen`
+- `exact` (boolean, optional): Require exact text match
+- `button` (integer, optional): Mouse button index. `0` = left, `1` = right
+- `doubleClick` (boolean, optional): Click twice
+
+**Example:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "click_screen_button",
+    "arguments": {"text": "Multiplayer"}
+  }
+}
+```
+
+### Tool: click_screen_entry
+
+Click a detected list entry, such as a singleplayer world or multiplayer server row.
+
+**Parameters:**
+- `text`, `entryText`, or `name` (string, optional): Entry text to match, partial and case-insensitive by default
+- `index` (integer, optional): Entry index from `get_current_screen`
+- `exact` (boolean, optional): Require exact text match
+- `button` (integer, optional): Mouse button index. `0` = left, `1` = right
+- `doubleClick` (boolean, optional): Click twice to open/join when the screen supports it
+
+**Example flow:**
+```json
+{"method":"tools/call","params":{"name":"click_screen_button","arguments":{"text":"Singleplayer"}}}
+{"method":"tools/call","params":{"name":"wait_for_screen","arguments":{"titleRegex":"Select World|World"}}}
+{"method":"tools/call","params":{"name":"click_screen_entry","arguments":{"name":"Test World","doubleClick":true}}}
+```
+
+### Tool: click_screen_xy
+
+Click raw scaled GUI coordinates on the current screen. Use this as a fallback for custom screens.
+
+**Parameters:**
+- `x` (number, required): Scaled GUI X coordinate
+- `y` (number, required): Scaled GUI Y coordinate
+- `button` (integer, optional): Mouse button index. `0` = left, `1` = right
+- `doubleClick` (boolean, optional): Click twice
+
+### Tool: wait_for_screen
+
+Wait until the current screen title or class matches.
+
+**Parameters:**
+- `title` (string, optional): Exact title
+- `titleContains` (string, optional): Case-insensitive title substring
+- `titleRegex` (string, optional): Java regex matched against title
+- `screenClass` (string, optional): Exact screen class
+- `classContains` (string, optional): Class name substring
+- `timeout_ms` (integer, optional): Timeout in milliseconds, default `5000`
 
 ### Tool: close_current_screen
 

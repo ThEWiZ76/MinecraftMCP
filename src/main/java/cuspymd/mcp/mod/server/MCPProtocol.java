@@ -250,7 +250,7 @@ public class MCPProtocol {
             JsonObject getCurrentScreenTool = new JsonObject();
             getCurrentScreenTool.addProperty("name", "get_current_screen");
             getCurrentScreenTool.addProperty("description",
-                "Inspect the currently open Minecraft screen. For handled inventory screens this returns title, screen class, sync id, cursor stack, and slot contents."
+                "Inspect the currently open Minecraft screen. Returns title, screen class, size, detected buttons, detected list entries, and for handled inventory screens sync id, cursor stack, and slot contents."
             );
             JsonObject emptyInputSchema = new JsonObject();
             emptyInputSchema.addProperty("type", "object");
@@ -279,6 +279,80 @@ public class MCPProtocol {
             clickInputSchema.add("required", clickRequired);
             clickScreenSlotTool.add("inputSchema", clickInputSchema);
             tools.add(clickScreenSlotTool);
+
+            JsonObject clickScreenButtonTool = new JsonObject();
+            clickScreenButtonTool.addProperty("name", "click_screen_button");
+            clickScreenButtonTool.addProperty("description",
+                "Click a visible screen button by text or index. Use for main-menu buttons such as Singleplayer, Multiplayer, Options, Back, Join Server, or Select World."
+            );
+            JsonObject buttonInputSchema = new JsonObject();
+            buttonInputSchema.addProperty("type", "object");
+            JsonObject buttonProperties = new JsonObject();
+            buttonProperties.add("text", stringProperty("Button text to match. Partial, case-insensitive by default."));
+            buttonProperties.add("index", integerProperty("Button index from get_current_screen"));
+            buttonProperties.add("exact", booleanProperty("Require exact text match. Default false."));
+            buttonProperties.add("button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."));
+            buttonProperties.add("doubleClick", booleanProperty("Click twice. Default false."));
+            buttonInputSchema.add("properties", buttonProperties);
+            clickScreenButtonTool.add("inputSchema", buttonInputSchema);
+            tools.add(clickScreenButtonTool);
+
+            JsonObject clickScreenEntryTool = new JsonObject();
+            clickScreenEntryTool.addProperty("name", "click_screen_entry");
+            clickScreenEntryTool.addProperty("description",
+                "Click a detected list entry by text/name or index. Intended for Select World and Multiplayer server lists. Set doubleClick=true to open/join the selected entry."
+            );
+            JsonObject entryInputSchema = new JsonObject();
+            entryInputSchema.addProperty("type", "object");
+            JsonObject entryProperties = new JsonObject();
+            entryProperties.add("text", stringProperty("Entry text to match. Partial, case-insensitive by default."));
+            entryProperties.add("entryText", stringProperty("Alias for text."));
+            entryProperties.add("name", stringProperty("Alias for text."));
+            entryProperties.add("index", integerProperty("Entry index from get_current_screen"));
+            entryProperties.add("exact", booleanProperty("Require exact text match. Default false."));
+            entryProperties.add("button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."));
+            entryProperties.add("doubleClick", booleanProperty("Click twice. Default false."));
+            entryInputSchema.add("properties", entryProperties);
+            clickScreenEntryTool.add("inputSchema", entryInputSchema);
+            tools.add(clickScreenEntryTool);
+
+            JsonObject clickScreenXyTool = new JsonObject();
+            clickScreenXyTool.addProperty("name", "click_screen_xy");
+            clickScreenXyTool.addProperty("description",
+                "Click raw scaled GUI coordinates on the current screen. Fallback for screens with custom widgets."
+            );
+            JsonObject xyInputSchema = new JsonObject();
+            xyInputSchema.addProperty("type", "object");
+            JsonObject xyProperties = new JsonObject();
+            xyProperties.add("x", numberProperty("number", "Scaled GUI X coordinate"));
+            xyProperties.add("y", numberProperty("number", "Scaled GUI Y coordinate"));
+            xyProperties.add("button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."));
+            xyProperties.add("doubleClick", booleanProperty("Click twice. Default false."));
+            xyInputSchema.add("properties", xyProperties);
+            JsonArray xyRequired = new JsonArray();
+            xyRequired.add("x");
+            xyRequired.add("y");
+            xyInputSchema.add("required", xyRequired);
+            clickScreenXyTool.add("inputSchema", xyInputSchema);
+            tools.add(clickScreenXyTool);
+
+            JsonObject waitForScreenTool = new JsonObject();
+            waitForScreenTool.addProperty("name", "wait_for_screen");
+            waitForScreenTool.addProperty("description",
+                "Wait until the current screen title/class matches. Use after menu clicks before selecting submenu entries."
+            );
+            JsonObject waitInputSchema = new JsonObject();
+            waitInputSchema.addProperty("type", "object");
+            JsonObject waitProperties = new JsonObject();
+            waitProperties.add("title", stringProperty("Exact screen title."));
+            waitProperties.add("titleContains", stringProperty("Case-insensitive title substring."));
+            waitProperties.add("titleRegex", stringProperty("Java regex matched against screen title."));
+            waitProperties.add("screenClass", stringProperty("Exact screen class name."));
+            waitProperties.add("classContains", stringProperty("Class name substring."));
+            waitProperties.add("timeout_ms", integerProperty("Timeout in milliseconds. Default 5000."));
+            waitInputSchema.add("properties", waitProperties);
+            waitForScreenTool.add("inputSchema", waitInputSchema);
+            tools.add(waitForScreenTool);
 
             JsonObject closeCurrentScreenTool = new JsonObject();
             closeCurrentScreenTool.addProperty("name", "close_current_screen");

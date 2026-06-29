@@ -184,6 +184,72 @@ public class HTTPMCPServerTest {
     }
 
     @Test
+    public void testHandleMCPRequest_ToolsCallClickScreenButton() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.buttonResponse = new JsonObject();
+        server.buttonResponse.addProperty("clicked", true);
+        server.buttonResponse.addProperty("buttonText", "Multiplayer");
+
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("text", "Multiplayer");
+        JsonObject response = invokeTool(server, "click_screen_button", arguments, 15);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"buttonText\":\"Multiplayer\""));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallClickScreenEntry() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.entryResponse = new JsonObject();
+        server.entryResponse.addProperty("clicked", true);
+        server.entryResponse.addProperty("entryIndex", 1);
+
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("index", 1);
+        arguments.addProperty("doubleClick", true);
+        JsonObject response = invokeTool(server, "click_screen_entry", arguments, 16);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"entryIndex\":1"));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallClickScreenXy() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.xyResponse = new JsonObject();
+        server.xyResponse.addProperty("clicked", true);
+        server.xyResponse.addProperty("x", 120);
+
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("x", 120);
+        arguments.addProperty("y", 80);
+        JsonObject response = invokeTool(server, "click_screen_xy", arguments, 17);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"x\":120"));
+    }
+
+    @Test
+    public void testHandleMCPRequest_ToolsCallWaitForScreen() throws Exception {
+        TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
+        server.waitScreenResponse = new JsonObject();
+        server.waitScreenResponse.addProperty("matched", true);
+        server.waitScreenResponse.addProperty("title", "Select World");
+
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("titleRegex", "Select World");
+        JsonObject response = invokeTool(server, "wait_for_screen", arguments, 18);
+
+        JsonObject result = response.getAsJsonObject("result");
+        assertFalse(result.get("isError").getAsBoolean());
+        assertTrue(extractText(result).contains("\"matched\":true"));
+    }
+
+    @Test
     public void testHandleMCPRequest_ToolsCallCloseCurrentScreen() throws Exception {
         TestableHTTPMCPServer server = new TestableHTTPMCPServer(guiEnabledConfig());
         server.closeResponse = new JsonObject();
@@ -298,6 +364,10 @@ public class HTTPMCPServerTest {
         CompletableFuture<String> nextFuture;
         JsonObject screenResponse;
         JsonObject clickResponse;
+        JsonObject buttonResponse;
+        JsonObject entryResponse;
+        JsonObject xyResponse;
+        JsonObject waitScreenResponse;
         JsonObject closeResponse;
         JsonObject clientInteractionResponse;
 
@@ -318,6 +388,26 @@ public class HTTPMCPServerTest {
         @Override
         JsonObject clickScreenSlot(JsonObject arguments) {
             return MCPProtocol.createSuccessResponse(clickResponse.toString());
+        }
+
+        @Override
+        JsonObject clickScreenButton(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(buttonResponse.toString());
+        }
+
+        @Override
+        JsonObject clickScreenEntry(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(entryResponse.toString());
+        }
+
+        @Override
+        JsonObject clickScreenXy(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(xyResponse.toString());
+        }
+
+        @Override
+        JsonObject waitForScreen(JsonObject arguments) {
+            return MCPProtocol.createSuccessResponse(waitScreenResponse.toString());
         }
 
         @Override

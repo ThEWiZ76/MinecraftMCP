@@ -12,6 +12,7 @@ import cuspymd.mcp.mod.server.MCPProtocol;
 import cuspymd.mcp.mod.utils.BlockScanner;
 import cuspymd.mcp.mod.utils.ClientInputUtils;
 import cuspymd.mcp.mod.utils.PlayerInfoProvider;
+import cuspymd.mcp.mod.utils.ScreenAutomationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +119,13 @@ public class HTTPMCPServer {
                 case "execute_chat_commands" -> commandExecutor.executeChatCommands(arguments);
                 case "get_player_info" -> PlayerInfoProvider.getPlayerInfoResponse();
                 case "get_blocks_in_area" -> BlockScanner.getBlocksInArea(arguments, config.getServer().getMaxAreaSize());
+                case "get_current_screen" -> requireGuiTools() ? ScreenAutomationUtils.inspectCurrentScreen() : guiDisabled();
+                case "click_screen_slot" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenSlot(arguments) : guiDisabled();
+                case "click_screen_button" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenButton(arguments) : guiDisabled();
+                case "click_screen_entry" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenEntry(arguments) : guiDisabled();
+                case "click_screen_xy" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenXy(arguments) : guiDisabled();
+                case "wait_for_screen" -> requireGuiTools() ? ScreenAutomationUtils.waitForScreen(arguments) : guiDisabled();
+                case "close_current_screen" -> requireGuiTools() ? ScreenAutomationUtils.closeCurrentScreen() : guiDisabled();
                 case "set_held_slot" -> ClientInputUtils.setHeldSlot(arguments);
                 case "movement_input" -> ClientInputUtils.movementInput(arguments);
                 case "sneak" -> ClientInputUtils.sneak(arguments);
@@ -128,6 +136,14 @@ public class HTTPMCPServer {
             LOGGER.error("Error handling tools/call", e);
             return MCPProtocol.createErrorResponse("Internal server error: " + e.getMessage(), null);
         }
+    }
+
+    private boolean requireGuiTools() {
+        return config.getServer().isEnableGuiAutomationTools();
+    }
+
+    private JsonObject guiDisabled() {
+        return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
     }
 
     private JsonObject createSuccessResponse(JsonObject result, Integer requestId) {

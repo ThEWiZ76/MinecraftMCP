@@ -42,6 +42,9 @@ public final class MCPProtocol {
             "from", positionProperty("Start position"),
             "to", positionProperty("End position")
         ), "from", "to")));
+        if (config != null && config.getServer().isEnableGuiAutomationTools()) {
+            addGuiAutomationTools(tools);
+        }
         tools.add(tool("set_held_slot", "Select hotbar slot 0-8.", objectSchema(props("slot", integerProperty("Hotbar slot 0-8")), "slot")));
         tools.add(tool("movement_input", "Press/release movement keys: forward, back, left, right, jump, sprint, sneak.", objectSchema(props(
             "keys", arrayProperty("Movement keys"),
@@ -58,6 +61,58 @@ public final class MCPProtocol {
             "timeout_ms", integerProperty("Timeout milliseconds")
         ))));
         return tools;
+    }
+
+    private static void addGuiAutomationTools(JsonArray tools) {
+        tools.add(tool("get_current_screen",
+            "Inspect current Minecraft screen. Returns title, class, size, buttons, list entries, and handled-screen slots.",
+            objectSchema(new JsonObject())));
+        tools.add(tool("click_screen_slot",
+            "Click a slot in a handled inventory screen.",
+            objectSchema(props(
+                "slot", integerProperty("Target slot id from get_current_screen"),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."),
+                "action", stringProperty("Click type. Defaults to PICKUP. Supported values include PICKUP, QUICK_MOVE, SWAP, THROW, QUICK_CRAFT, PICKUP_ALL.")
+            ), "slot")));
+        tools.add(tool("click_screen_button",
+            "Click a visible screen button by text or index. Use for main menu Singleplayer/Multiplayer and submenu buttons.",
+            objectSchema(props(
+                "text", stringProperty("Button text to match. Partial, case-insensitive by default."),
+                "index", integerProperty("Button index from get_current_screen"),
+                "exact", booleanProperty("Require exact text match. Default false."),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."),
+                "doubleClick", booleanProperty("Click twice. Default false.")
+            ))));
+        tools.add(tool("click_screen_entry",
+            "Click a detected list entry by text/name or index. Use for Select World and Multiplayer server lists. Set doubleClick=true to open/join.",
+            objectSchema(props(
+                "text", stringProperty("Entry text to match. Partial, case-insensitive by default."),
+                "entryText", stringProperty("Alias for text."),
+                "name", stringProperty("Alias for text."),
+                "index", integerProperty("Entry index from get_current_screen"),
+                "exact", booleanProperty("Require exact text match. Default false."),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."),
+                "doubleClick", booleanProperty("Click twice. Default false.")
+            ))));
+        tools.add(tool("click_screen_xy",
+            "Click raw scaled GUI coordinates on current screen.",
+            objectSchema(props(
+                "x", numberProperty("Scaled GUI X coordinate"),
+                "y", numberProperty("Scaled GUI Y coordinate"),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."),
+                "doubleClick", booleanProperty("Click twice. Default false.")
+            ), "x", "y")));
+        tools.add(tool("wait_for_screen",
+            "Wait until current screen title/class matches.",
+            objectSchema(props(
+                "title", stringProperty("Exact screen title."),
+                "titleContains", stringProperty("Case-insensitive title substring."),
+                "titleRegex", stringProperty("Java regex matched against screen title."),
+                "screenClass", stringProperty("Exact screen class name."),
+                "classContains", stringProperty("Class name substring."),
+                "timeout_ms", integerProperty("Timeout in milliseconds. Default 5000.")
+            ))));
+        tools.add(tool("close_current_screen", "Close current Minecraft screen.", objectSchema(new JsonObject())));
     }
 
     public static JsonObject createSuccessResponse(String message) {
@@ -160,6 +215,13 @@ public final class MCPProtocol {
     private static JsonObject booleanProperty(String description) {
         JsonObject property = new JsonObject();
         property.addProperty("type", "boolean");
+        property.addProperty("description", description);
+        return property;
+    }
+
+    private static JsonObject numberProperty(String description) {
+        JsonObject property = new JsonObject();
+        property.addProperty("type", "number");
         property.addProperty("description", description);
         return property;
     }

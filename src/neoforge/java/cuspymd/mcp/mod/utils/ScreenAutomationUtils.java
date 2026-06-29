@@ -2,18 +2,17 @@ package cuspymd.mcp.mod.utils;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.input.MouseInput;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import cuspymd.mcp.mod.server.MCPProtocol;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,44 +34,40 @@ public final class ScreenAutomationUtils {
     private ScreenAutomationUtils() {
     }
 
-    public static CompletableFuture<JsonObject> inspectCurrentScreen() {
-        return runOnClientThread(ScreenAutomationUtils::inspectCurrentScreenNow);
+    public static JsonObject inspectCurrentScreen() {
+        return await(runOnClient(ScreenAutomationUtils::inspectCurrentScreenNow), "inspect current screen");
     }
 
-    public static CompletableFuture<JsonObject> clickScreenSlot(JsonObject params) {
-        return runOnClientThread(client -> clickScreenSlotNow(client, params));
+    public static JsonObject clickScreenSlot(JsonObject params) {
+        return await(runOnClient(client -> clickScreenSlotNow(client, params)), "click screen slot");
     }
 
-    public static CompletableFuture<JsonObject> clickScreenButton(JsonObject params) {
-        return runOnClientThread(client -> clickScreenButtonNow(client, params));
+    public static JsonObject clickScreenButton(JsonObject params) {
+        return await(runOnClient(client -> clickScreenButtonNow(client, params)), "click screen button");
     }
 
-    public static CompletableFuture<JsonObject> clickScreenEntry(JsonObject params) {
-        return runOnClientThread(client -> clickScreenEntryNow(client, params));
+    public static JsonObject clickScreenEntry(JsonObject params) {
+        return await(runOnClient(client -> clickScreenEntryNow(client, params)), "click screen entry");
     }
 
-    public static CompletableFuture<JsonObject> clickScreenXy(JsonObject params) {
-        return runOnClientThread(client -> clickScreenXyNow(client, params));
+    public static JsonObject clickScreenXy(JsonObject params) {
+        return await(runOnClient(client -> clickScreenXyNow(client, params)), "click screen xy");
     }
 
-    public static CompletableFuture<JsonObject> waitForScreen(JsonObject params) {
-        JsonObject normalized = params != null ? params : new JsonObject();
-        return CompletableFuture.supplyAsync(() -> waitForScreenNow(normalized));
-    }
-
-    public static CompletableFuture<JsonObject> closeCurrentScreen() {
-        return runOnClientThread(ScreenAutomationUtils::closeCurrentScreenNow);
-    }
-
-    static SlotActionType parseActionType(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return SlotActionType.PICKUP;
+    public static JsonObject waitForScreen(JsonObject params) {
+        try {
+            return MCPProtocol.createSuccessResponse(waitForScreenNow(params != null ? params : new JsonObject()).toString());
+        } catch (Exception e) {
+            return MCPProtocol.createErrorResponse("Failed to wait for screen: " + e.getMessage(), null);
         }
-        return SlotActionType.valueOf(rawValue.trim().toUpperCase(Locale.ROOT));
     }
 
-    private static CompletableFuture<JsonObject> runOnClientThread(ClientAction action) {
-        MinecraftClient client = MinecraftClient.getInstance();
+    public static JsonObject closeCurrentScreen() {
+        return await(runOnClient(ScreenAutomationUtils::closeCurrentScreenNow), "close current screen");
+    }
+
+    private static CompletableFuture<JsonObject> runOnClient(ClientAction action) {
+        Minecraft client = Minecraft.getInstance();
         CompletableFuture<JsonObject> future = new CompletableFuture<>();
         client.execute(() -> {
             try {
@@ -84,11 +79,18 @@ public final class ScreenAutomationUtils {
         return future;
     }
 
-    private static JsonObject inspectCurrentScreenNow(MinecraftClient client) {
-        JsonObject result = new JsonObject();
-        Screen screen = client.currentScreen;
-        result.addProperty("hasScreen", screen != null);
+    private static JsonObject await(CompletableFuture<JsonObject> future, String operationName) {
+        try {
+            return MCPProtocol.createSuccessResponse(future.get().toString());
+        } catch (Exception e) {
+            return MCPProtocol.createErrorResponse("Failed to " + operationName + ": " + e.getMessage(), null);
+        }
+    }
 
+    private static JsonObject inspectCurrentScreenNow(Minecraft client) {
+        JsonObject result = new JsonObject();
+        Screen screen = client.screen;
+        result.addProperty("hasScreen", screen != null);
         if (screen == null) {
             return result;
         }
@@ -97,117 +99,51 @@ public final class ScreenAutomationUtils {
         result.addProperty("title", screen.getTitle().getString());
         result.addProperty("width", screen.width);
         result.addProperty("height", screen.height);
-        result.addProperty("isHandledScreen", screen instanceof HandledScreen<?>);
+        result.addProperty("isHandledScreen", screen instanceof AbstractContainerScreen<?>);
         result.add("buttons", serializeButtons(screen));
         result.add("entries", serializeListEntries(screen));
 
-        if (!(screen instanceof HandledScreen<?> handledScreen)) {
+        if (!(screen instanceof AbstractContainerScreen<?> handledScreen)) {
             return result;
         }
 
-        ScreenHandler handler = handledScreen.getScreenHandler();
-        result.addProperty("syncId", handler.syncId);
-        result.add("cursorStack", serializeStack(handler.getCursorStack()));
+        AbstractContainerMenu menu = handledScreen.getMenu();
+        result.addProperty("syncId", menu.containerId);
+        result.add("cursorStack", serializeStack(menu.getCarried()));
 
         JsonArray slots = new JsonArray();
-        for (Slot slot : handler.slots) {
+        for (Slot slot : menu.slots) {
             JsonObject slotJson = new JsonObject();
-            slotJson.addProperty("id", slot.id);
-            slotJson.addProperty("index", slot.getIndex());
+            slotJson.addProperty("id", slot.index);
+            slotJson.addProperty("index", slot.getContainerSlot());
             slotJson.addProperty("x", slot.x);
             slotJson.addProperty("y", slot.y);
-            slotJson.addProperty("hasStack", slot.hasStack());
-            slotJson.add("stack", serializeStack(slot.getStack()));
+            slotJson.addProperty("hasStack", slot.hasItem());
+            slotJson.add("stack", serializeStack(slot.getItem()));
             slots.add(slotJson);
         }
         result.add("slots", slots);
         return result;
     }
 
-    private static JsonObject clickScreenButtonNow(MinecraftClient client, JsonObject params) {
-        Screen screen = requireScreen(client);
-        List<ClickableWidget> buttons = collectButtons(screen);
-        int buttonIndex = findButtonIndex(buttons, params);
-        ClickableWidget widget = buttons.get(buttonIndex);
-        int mouseButton = getInt(params, "button", 0);
-        double x = widget.getX() + widget.getWidth() / 2.0;
-        double y = widget.getY() + widget.getHeight() / 2.0;
-        clickAt(screen, x, y, mouseButton, getBoolean(params, "doubleClick", false));
-
-        JsonObject result = new JsonObject();
-        result.addProperty("clicked", true);
-        result.addProperty("buttonIndex", buttonIndex);
-        result.addProperty("buttonText", widget.getMessage().getString());
-        result.addProperty("x", x);
-        result.addProperty("y", y);
-        result.add("screen", inspectCurrentScreenNow(client));
-        return result;
-    }
-
-    private static JsonObject clickScreenEntryNow(MinecraftClient client, JsonObject params) {
-        Screen screen = requireScreen(client);
-        List<EntryInfo> entries = collectListEntries(screen);
-        if (entries.isEmpty()) {
-            throw new IllegalStateException("Current screen has no detectable list entries.");
-        }
-        int entryIndex = findEntryIndex(entries, params);
-        EntryInfo entry = entries.get(entryIndex);
-        int mouseButton = getInt(params, "button", 0);
-        clickAt(screen, entry.centerX(), entry.centerY(), mouseButton, getBoolean(params, "doubleClick", false));
-
-        JsonObject result = new JsonObject();
-        result.addProperty("clicked", true);
-        result.addProperty("entryIndex", entryIndex);
-        result.addProperty("entryText", entry.text());
-        result.addProperty("x", entry.centerX());
-        result.addProperty("y", entry.centerY());
-        result.add("screen", inspectCurrentScreenNow(client));
-        return result;
-    }
-
-    private static JsonObject clickScreenXyNow(MinecraftClient client, JsonObject params) {
-        Screen screen = requireScreen(client);
-        if (params == null || !params.has("x") || !params.has("y")) {
-            throw new IllegalArgumentException("Missing required parameters: x and y");
-        }
-        double x = params.get("x").getAsDouble();
-        double y = params.get("y").getAsDouble();
-        int mouseButton = getInt(params, "button", 0);
-        clickAt(screen, x, y, mouseButton, getBoolean(params, "doubleClick", false));
-
-        JsonObject result = new JsonObject();
-        result.addProperty("clicked", true);
-        result.addProperty("x", x);
-        result.addProperty("y", y);
-        result.addProperty("button", mouseButton);
-        result.add("screen", inspectCurrentScreenNow(client));
-        return result;
-    }
-
-    private static JsonObject clickScreenSlotNow(MinecraftClient client, JsonObject params) {
+    private static JsonObject clickScreenSlotNow(Minecraft client, JsonObject params) {
         if (params == null || !params.has("slot")) {
             throw new IllegalArgumentException("Missing required parameter: slot");
         }
-        if (client.player == null) {
-            throw new IllegalStateException("Player not found. Make sure you are in a world.");
+        if (client.player == null || client.gameMode == null) {
+            throw new IllegalStateException("Player/game mode not available.");
         }
-        if (client.interactionManager == null) {
-            throw new IllegalStateException("Interaction manager not available.");
-        }
-        if (!(client.currentScreen instanceof HandledScreen<?> handledScreen)) {
+        if (!(client.screen instanceof AbstractContainerScreen<?> handledScreen)) {
             throw new IllegalStateException("Current screen is not a handled inventory screen.");
         }
-
-        ScreenHandler handler = handledScreen.getScreenHandler();
+        AbstractContainerMenu menu = handledScreen.getMenu();
         int slotId = params.get("slot").getAsInt();
-        if (slotId < 0 || slotId >= handler.slots.size()) {
-            throw new IllegalArgumentException("Slot " + slotId + " is outside the current screen slot range 0-" + (handler.slots.size() - 1));
+        if (slotId < 0 || slotId >= menu.slots.size()) {
+            throw new IllegalArgumentException("Slot " + slotId + " is outside range 0-" + (menu.slots.size() - 1));
         }
-
-        int button = params.has("button") ? params.get("button").getAsInt() : 0;
-        SlotActionType actionType = parseActionType(params.has("action") ? params.get("action").getAsString() : null);
-
-        client.interactionManager.clickSlot(handler.syncId, slotId, button, actionType, client.player);
+        int button = getInt(params, "button", 0);
+        ClickType actionType = parseClickType(params != null && params.has("action") ? params.get("action").getAsString() : null);
+        client.gameMode.handleInventoryMouseClick(menu.containerId, slotId, button, actionType, client.player);
 
         JsonObject result = new JsonObject();
         result.addProperty("clicked", true);
@@ -218,22 +154,75 @@ public final class ScreenAutomationUtils {
         return result;
     }
 
-    private static JsonObject closeCurrentScreenNow(MinecraftClient client) {
-        JsonObject result = new JsonObject();
-        Screen screen = client.currentScreen;
-        result.addProperty("hadScreen", screen != null);
+    private static JsonObject clickScreenButtonNow(Minecraft client, JsonObject params) {
+        Screen screen = requireScreen(client);
+        List<AbstractWidget> buttons = collectButtons(screen);
+        int index = findButtonIndex(buttons, params);
+        AbstractWidget widget = buttons.get(index);
+        int button = getInt(params, "button", 0);
+        double x = widget.getX() + widget.getWidth() / 2.0;
+        double y = widget.getY() + widget.getHeight() / 2.0;
+        clickAt(screen, x, y, button, getBoolean(params, "doubleClick", false));
 
+        JsonObject result = new JsonObject();
+        result.addProperty("clicked", true);
+        result.addProperty("buttonIndex", index);
+        result.addProperty("buttonText", widget.getMessage().getString());
+        result.addProperty("x", x);
+        result.addProperty("y", y);
+        result.add("screen", inspectCurrentScreenNow(client));
+        return result;
+    }
+
+    private static JsonObject clickScreenEntryNow(Minecraft client, JsonObject params) {
+        Screen screen = requireScreen(client);
+        List<EntryInfo> entries = collectListEntries(screen);
+        if (entries.isEmpty()) {
+            throw new IllegalStateException("Current screen has no detectable list entries.");
+        }
+        int index = findEntryIndex(entries, params);
+        EntryInfo entry = entries.get(index);
+        int button = getInt(params, "button", 0);
+        clickAt(screen, entry.centerX(), entry.centerY(), button, getBoolean(params, "doubleClick", false));
+
+        JsonObject result = new JsonObject();
+        result.addProperty("clicked", true);
+        result.addProperty("entryIndex", index);
+        result.addProperty("entryText", entry.text());
+        result.addProperty("x", entry.centerX());
+        result.addProperty("y", entry.centerY());
+        result.add("screen", inspectCurrentScreenNow(client));
+        return result;
+    }
+
+    private static JsonObject clickScreenXyNow(Minecraft client, JsonObject params) {
+        Screen screen = requireScreen(client);
+        if (params == null || !params.has("x") || !params.has("y")) {
+            throw new IllegalArgumentException("Missing required parameters: x and y");
+        }
+        double x = params.get("x").getAsDouble();
+        double y = params.get("y").getAsDouble();
+        int button = getInt(params, "button", 0);
+        clickAt(screen, x, y, button, getBoolean(params, "doubleClick", false));
+
+        JsonObject result = new JsonObject();
+        result.addProperty("clicked", true);
+        result.addProperty("x", x);
+        result.addProperty("y", y);
+        result.addProperty("button", button);
+        result.add("screen", inspectCurrentScreenNow(client));
+        return result;
+    }
+
+    private static JsonObject closeCurrentScreenNow(Minecraft client) {
+        JsonObject result = new JsonObject();
+        Screen screen = client.screen;
+        result.addProperty("hadScreen", screen != null);
         if (screen == null) {
             result.addProperty("closed", false);
             return result;
         }
-
-        if (client.player != null && screen instanceof HandledScreen<?>) {
-            client.player.closeHandledScreen();
-        } else {
-            client.setScreen(null);
-        }
-
+        screen.onClose();
         result.addProperty("closed", true);
         return result;
     }
@@ -242,10 +231,9 @@ public final class ScreenAutomationUtils {
         long timeoutMs = getInt(params, "timeout_ms", DEFAULT_WAIT_TIMEOUT_MS);
         long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
         JsonObject lastScreen = new JsonObject();
-
         while (System.nanoTime() <= deadline) {
             try {
-                lastScreen = inspectCurrentScreen().get(500, TimeUnit.MILLISECONDS);
+                lastScreen = runOnClient(ScreenAutomationUtils::inspectCurrentScreenNow).get(500, TimeUnit.MILLISECONDS);
                 if (matchesScreen(lastScreen, params)) {
                     JsonObject result = lastScreen.deepCopy();
                     result.addProperty("matched", true);
@@ -259,40 +247,32 @@ public final class ScreenAutomationUtils {
                 throw new IllegalStateException("Failed while waiting for screen", e);
             }
         }
-
         JsonObject result = lastScreen.deepCopy();
         result.addProperty("matched", false);
         result.addProperty("timeout_ms", timeoutMs);
         return result;
     }
 
-    private static JsonObject serializeStack(ItemStack stack) {
-        JsonObject result = new JsonObject();
-        boolean present = stack != null && !stack.isEmpty();
-        result.addProperty("present", present);
-        if (!present) {
-            return result;
-        }
-
-        result.addProperty("itemId", Registries.ITEM.getId(stack.getItem()).toString());
-        result.addProperty("count", stack.getCount());
-        result.addProperty("displayName", stack.getName().getString());
-        return result;
-    }
-
-    private static Screen requireScreen(MinecraftClient client) {
-        Screen screen = client.currentScreen;
+    private static Screen requireScreen(Minecraft client) {
+        Screen screen = client.screen;
         if (screen == null) {
             throw new IllegalStateException("No current screen is open.");
         }
         return screen;
     }
 
+    private static ClickType parseClickType(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return ClickType.PICKUP;
+        }
+        return ClickType.valueOf(rawValue.trim().toUpperCase(Locale.ROOT));
+    }
+
     private static JsonArray serializeButtons(Screen screen) {
         JsonArray array = new JsonArray();
-        List<ClickableWidget> buttons = collectButtons(screen);
+        List<AbstractWidget> buttons = collectButtons(screen);
         for (int i = 0; i < buttons.size(); i++) {
-            ClickableWidget button = buttons.get(i);
+            AbstractWidget button = buttons.get(i);
             JsonObject item = new JsonObject();
             item.addProperty("index", i);
             item.addProperty("text", button.getMessage().getString());
@@ -307,17 +287,17 @@ public final class ScreenAutomationUtils {
         return array;
     }
 
-    private static List<ClickableWidget> collectButtons(Screen screen) {
-        List<ClickableWidget> buttons = new ArrayList<>();
-        for (Element child : screen.children()) {
-            if (child instanceof ClickableWidget widget) {
+    private static List<AbstractWidget> collectButtons(Screen screen) {
+        List<AbstractWidget> buttons = new ArrayList<>();
+        for (GuiEventListener child : screen.children()) {
+            if (child instanceof AbstractWidget widget) {
                 buttons.add(widget);
             }
         }
         return buttons;
     }
 
-    private static int findButtonIndex(List<ClickableWidget> buttons, JsonObject params) {
+    private static int findButtonIndex(List<AbstractWidget> buttons, JsonObject params) {
         if (buttons.isEmpty()) {
             throw new IllegalStateException("Current screen has no clickable buttons.");
         }
@@ -363,14 +343,14 @@ public final class ScreenAutomationUtils {
 
     private static List<EntryInfo> collectListEntries(Screen screen) {
         List<EntryInfo> entries = new ArrayList<>();
-        for (Element child : screen.children()) {
+        for (GuiEventListener child : screen.children()) {
             List<?> childEntries = invokeChildren(child);
             if (childEntries == null || childEntries.isEmpty()) {
                 continue;
             }
             for (int i = 0; i < childEntries.size(); i++) {
                 Object entry = childEntries.get(i);
-                if (entry instanceof ClickableWidget || entry instanceof Screen) {
+                if (entry instanceof AbstractWidget || entry instanceof Screen) {
                     continue;
                 }
                 int top = invokeInt(child, "getRowTop", i, 32 + i * 36);
@@ -408,12 +388,11 @@ public final class ScreenAutomationUtils {
     }
 
     private static void clickAt(Screen screen, double x, double y, int button, boolean doubleClick) {
-        Click click = new Click(x, y, new MouseInput(button, 0));
-        screen.mouseClicked(click, false);
-        screen.mouseReleased(click);
+        screen.mouseClicked(x, y, button);
+        screen.mouseReleased(x, y, button);
         if (doubleClick) {
-            screen.mouseClicked(click, true);
-            screen.mouseReleased(click);
+            screen.mouseClicked(x, y, button);
+            screen.mouseReleased(x, y, button);
         }
     }
 
@@ -439,6 +418,19 @@ public final class ScreenAutomationUtils {
             return false;
         }
         return true;
+    }
+
+    private static JsonObject serializeStack(ItemStack stack) {
+        JsonObject result = new JsonObject();
+        boolean present = stack != null && !stack.isEmpty();
+        result.addProperty("present", present);
+        if (!present) {
+            return result;
+        }
+        result.addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        result.addProperty("count", stack.getCount());
+        result.addProperty("displayName", stack.getHoverName().getString());
+        return result;
     }
 
     private static List<?> invokeChildren(Object target) {
@@ -535,7 +527,6 @@ public final class ScreenAutomationUtils {
                     collectText(fieldValue, builder, seen, depth + 1);
                 }
             } catch (Exception ignored) {
-                // Best-effort entry text extraction across obfuscated screen classes.
             }
         }
     }
@@ -597,6 +588,6 @@ public final class ScreenAutomationUtils {
 
     @FunctionalInterface
     private interface ClientAction {
-        JsonObject run(MinecraftClient client);
+        JsonObject run(Minecraft client);
     }
 }
