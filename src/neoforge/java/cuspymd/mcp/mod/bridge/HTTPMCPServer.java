@@ -13,6 +13,7 @@ import cuspymd.mcp.mod.utils.BlockScanner;
 import cuspymd.mcp.mod.utils.ClientInputUtils;
 import cuspymd.mcp.mod.utils.PlayerInfoProvider;
 import cuspymd.mcp.mod.utils.ScreenAutomationUtils;
+import cuspymd.mcp.mod.utils.ScreenshotUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +24,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HTTPMCPServer {
@@ -119,6 +124,7 @@ public class HTTPMCPServer {
                 case "execute_chat_commands" -> commandExecutor.executeChatCommands(arguments);
                 case "get_player_info" -> PlayerInfoProvider.getPlayerInfoResponse();
                 case "get_blocks_in_area" -> BlockScanner.getBlocksInArea(arguments, config.getServer().getMaxAreaSize());
+                case "take_screenshot" -> handleTakeScreenshot(arguments);
                 case "get_current_screen" -> requireGuiTools() ? ScreenAutomationUtils.inspectCurrentScreen() : guiDisabled();
                 case "click_screen_slot" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenSlot(arguments) : guiDisabled();
                 case "click_screen_button" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenButton(arguments) : guiDisabled();
@@ -146,6 +152,46 @@ public class HTTPMCPServer {
 
     private JsonObject guiDisabled() {
         return MCPProtocol.createErrorResponse("GUI automation tools are disabled in config", null);
+    }
+
+    private JsonObject handleTakeScreenshot(JsonObject arguments) {
+        CompletableFuture<String> future;
+        try {
+            JsonObject params = arguments != null ? arguments : new JsonObject();
+            future = ScreenshotUtils.takeScreenshot(params);
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error taking screenshot", e);
+            return MCPProtocol.createErrorResponse("Failed to take screenshot: " + e.getMessage(), null);
+        }
+
+        return awaitScreenshotResult(future);
+    }
+
+    JsonObject awaitScreenshotResult(CompletableFuture<String> future) {
+        try {
+            String base64Data = future.get(config.getServer().getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
+            return MCPProtocol.createImageResponse(base64Data, "image/png");
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            LOGGER.warn("Screenshot capture timed out after {} ms", config.getServer().getRequestTimeoutMs());
+            return MCPProtocol.createErrorResponse(
+                "Screenshot capture timed out after " + config.getServer().getRequestTimeoutMs() + " ms",
+                null
+            );
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Screenshot capture interrupted");
+            return MCPProtocol.createErrorResponse("Screenshot capture was interrupted", null);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            LOGGER.error("Error taking screenshot", cause);
+            String errorMessage = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+            return MCPProtocol.createErrorResponse("Failed to take screenshot: " + errorMessage, null);
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error taking screenshot", e);
+            return MCPProtocol.createErrorResponse("Failed to take screenshot: " + e.getMessage(), null);
+        }
     }
 
     private JsonObject createSuccessResponse(JsonObject result, Integer requestId) {

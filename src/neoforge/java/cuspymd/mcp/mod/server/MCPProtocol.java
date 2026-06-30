@@ -42,6 +42,13 @@ public final class MCPProtocol {
             "from", positionProperty("Start position"),
             "to", positionProperty("End position")
         ), "from", "to")));
+        tools.add(tool("take_screenshot", "Capture a screenshot from the active Minecraft client and return it as an image result. Optional x/y/z/yaw/pitch arguments can move or rotate the player view before capture.", objectSchema(props(
+            "x", numberProperty("Optional absolute X coordinate for a temporary camera move before capture"),
+            "y", numberProperty("Optional absolute Y coordinate for a temporary camera move before capture"),
+            "z", numberProperty("Optional absolute Z coordinate for a temporary camera move before capture"),
+            "yaw", numberProperty("Optional yaw rotation in degrees"),
+            "pitch", numberProperty("Optional pitch rotation in degrees")
+        ))));
         if (config != null && config.getServer().isEnableGuiAutomationTools()) {
             addGuiAutomationTools(tools);
         }
@@ -147,6 +154,19 @@ public final class MCPProtocol {
         if (meta != null) {
             response.add("_meta", meta);
         }
+        return response;
+    }
+
+    public static JsonObject createImageResponse(String base64Data, String mimeType) {
+        JsonObject response = new JsonObject();
+        response.addProperty("isError", false);
+        JsonArray content = new JsonArray();
+        JsonObject imageContent = new JsonObject();
+        imageContent.addProperty("type", "image");
+        imageContent.addProperty("data", base64Data);
+        imageContent.addProperty("mimeType", mimeType);
+        content.add(imageContent);
+        response.add("content", content);
         return response;
     }
 

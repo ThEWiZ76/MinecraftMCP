@@ -33,6 +33,7 @@ The NeoForge build is a separate artifact and currently supports the core MCP cl
 - `execute_chat_commands` when enabled in config
 - `get_player_info`
 - `get_blocks_in_area`
+- `take_screenshot`
 - `get_current_screen`, `click_screen_button`, `click_screen_entry`, `click_screen_xy`, `click_screen_slot`, `wait_for_screen`, `close_current_screen` when GUI automation is enabled
 - `right_click_block`
 - `right_click_item`
@@ -41,7 +42,7 @@ The NeoForge build is a separate artifact and currently supports the core MCP cl
 - `sneak`
 - `wait_for_chat`
 
-Fabric-only tools such as screenshots, block attack, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
+Fabric-only tools such as block attack, scoreboard/HUD capture, nearby entity capture, and sound/particle capture still need NeoForge-specific ports.
 
 ## Installation
 
