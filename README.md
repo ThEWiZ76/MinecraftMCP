@@ -1,359 +1,168 @@
-# Minecraft MCP Server Mod
+# MinecraftMCP - Fabric 1.21.10
 
-A Fabric mod that implements a Model Context Protocol (MCP) server, enabling AI assistants like Claude to interact with Minecraft through structured commands.
+MinecraftMCP is a modified build of the original Minecraft MCP Server Mod for Fabric.
+It runs a local HTTP Model Context Protocol server inside the Minecraft client so AI tools can inspect the client, execute safe commands, automate UI flows, take screenshots, and test in-world interactions.
 
-## Overview
+## Credits
 
-This mod creates an HTTP server within the Minecraft client that accepts MCP protocol requests, allowing Large Language Models to execute Minecraft commands safely and efficiently. The mod includes comprehensive safety validation to prevent destructive operations.
+Original project by **cuspymd**:
 
-## Features
+- GitHub: https://github.com/cuspymd/mcp-server-mod
+- Modrinth: https://modrinth.com/mod/mcp-server-mod
 
-- **MCP Protocol Support**: Full implementation of Model Context Protocol for AI interaction
-- **Safety Validation**: Comprehensive command filtering and validation system
-- **Asynchronous Execution**: Non-blocking command execution to maintain game performance
-- **Configurable Settings**: Customizable safety limits, server settings, and command permissions
-- **Real-time Feedback**: Detailed execution results including block counts and entity information
+This branch contains modified CommunityCraft/ThEWiZ76 builds with extra automation and testing tools. License remains CC0-1.0; see [LICENSE](LICENSE).
+
+## Branches
+
+- `fabric/mc1.21.10` - Fabric build for Minecraft 1.21.10
+- `neoforge/mc1.21.1` - NeoForge build for Minecraft 1.21.1
 
 ## Requirements
 
-- **Minecraft**: 1.21.10
-- **Fabric Loader**: 0.17.3 or higher
-- **Fabric API**: 0.135.0+1.21.10
-- **Java**: 21 or higher
+- Minecraft 1.21.10
+- Java 21 or newer
+- Fabric Loader 0.17.3 or newer
+- Fabric API 0.135.0+1.21.10
 
-## Installation
+## Download
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 1.21.10
-2. Download and install [Fabric API](https://modrinth.com/mod/fabric-api)
-3. Place the mod JAR file in your `mods` folder
-4. Launch Minecraft with the Fabric profile
+Use the GitHub release for this branch:
 
-## Usage
+- `fabric-v1.1.0-mc1.21.10`
+- Asset: `mcp-server-mod-1.1.0+mc1.21.10.jar`
 
-### Starting the MCP Server
+## Install
 
-The MCP server starts automatically when you launch Minecraft with the mod installed. By default, it runs on `localhost:8080`.
+1. Install Fabric Loader for Minecraft 1.21.10.
+2. Install Fabric API for Minecraft 1.21.10.
+3. Download `mcp-server-mod-1.1.0+mc1.21.10.jar` from the release.
+4. Put both Fabric API and this mod jar in your Minecraft profile `mods` folder.
+5. Launch the Fabric profile.
 
-### Configuration
+The MCP server starts automatically at:
 
-The mod creates a configuration file at `config/mcp-client.json`:
+```text
+http://127.0.0.1:8080/mcp
+```
+
+## MCP Client Configuration
+
+Example MCP client entry:
+
+```json
+{
+  "mcpServers": {
+    "minecraft": {
+      "url": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
+```
+
+Use `127.0.0.1` if another local service intercepts `localhost`.
+
+## Configuration
+
+Config file:
+
+```text
+config/mcp-client.json
+```
+
+Important options:
 
 ```json
 {
   "server": {
-    "transport": "http",
     "port": 8080,
     "host": "localhost",
     "enableSafety": true,
     "enableUnsafeChatCommands": false,
     "enableGuiAutomationTools": false,
-    "maxAreaSize": 10,
-    "allowedCommands": ["fill", "clone", "setblock", "summon", "tp", "give"],
-    "requestTimeoutMs": 30000,
-    "autoStart": true
+    "requestTimeoutMs": 30000
   },
   "client": {
-    "showNotifications": true,
-    "logLevel": "INFO",
-    "logCommands": false,
     "saveScreenshotsForDebug": false
-  },
-  "safety": {
-    "maxEntitiesPerCommand": 10,
-    "maxBlocksPerCommand": 125000,
-    "blockCreativeForAll": true,
-    "requireOpForAdminCommands": true
   }
 }
 ```
 
-`server.requestTimeoutMs` limits how long the server waits for tool execution (including `execute_commands`, `execute_chat_commands`, `take_screenshot`, and GUI automation calls) before returning a timeout error.
+Notes:
 
-### Connecting with AI Assistants
+- `enableUnsafeChatCommands` exposes arbitrary chat-command execution. Use only in trusted local testing.
+- `enableGuiAutomationTools` exposes menu/inventory GUI automation tools.
+- `saveScreenshotsForDebug` saves screenshots to `mcp_debug_screenshots` in the Minecraft instance folder.
 
-Connect your AI assistant (like Claude) to the MCP server using the endpoint:
-```
-http://localhost:8080/mcp
-```
+## Supported Tools
 
-If `localhost` on your machine is intercepted by another local service, use:
-```
-http://127.0.0.1:8080/mcp
-```
+Core tools:
 
-The server supports these tools:
-- `execute_commands` - Execute Minecraft commands with safety validation
-- `execute_chat_commands` - Execute arbitrary player chat commands for explicit admin/debug/plugin testing when `server.enableUnsafeChatCommands` is enabled
-- `get_player_info` - Get comprehensive player information
-- `get_blocks_in_area` - Scan and retrieve blocks in a specified area
-- `take_screenshot` - Capture game screen with optional camera control
-- `get_current_screen` - Inspect the currently open GUI when `server.enableGuiAutomationTools` is enabled
-- `click_screen_slot` - Click a slot in the current handled GUI when `server.enableGuiAutomationTools` is enabled
-- `close_current_screen` - Close the current GUI when `server.enableGuiAutomationTools` is enabled
+- `execute_commands` - execute allowed Minecraft commands with safety validation
+- `execute_chat_commands` - execute arbitrary player chat commands when enabled
+- `get_player_info` - return position, facing, dimension, health, and inventory summary
+- `get_blocks_in_area` - scan non-air blocks in a rectangular area
+- `take_screenshot` - capture PNG screenshot with optional `x/y/z/yaw/pitch`
 
-`execute_chat_commands` and the GUI automation tools are intentionally disabled by default so the safe vanilla command surface remains unchanged.
+GUI tools, when `enableGuiAutomationTools` is true:
 
-### Example Commands
+- `get_current_screen`
+- `click_screen_slot`
+- `click_screen_button`
+- `click_screen_entry`
+- `click_screen_xy`
+- `wait_for_screen`
+- `close_current_screen`
 
-The AI can execute commands like:
-- `fill ~ ~ ~ ~10 ~5 ~8 oak_planks` - Fill an area with blocks
-- `summon villager ~ ~ ~` - Spawn entities
-- `setblock ~ ~1 ~ oak_door` - Place specific blocks
-- `tp @s ~ ~10 ~` - Teleport players
-- `give @s diamond_sword` - Give items
+Client interaction tools:
 
-## Safety Features
+- `attack_block` - start, hold, release, or hold until block break completes
+- `left_click_air` - single attack swing without block target
+- `right_click_block` - right-click exact block face
+- `right_click_item` - use held item in air
+- `set_held_slot` - select hotbar slot 0-8
+- `movement_input` - press/release movement keys for a number of ticks
+- `sneak` - press, release, toggle, or hold sneak
+- `wait_for_chat` - wait for literal chat text or regex
+- `get_scoreboard` - return sidebar title and ordered lines
+- `get_client_disconnect` - return last disconnect screen and exception details
+- `get_bossbar_actionbar_titles` - return visible title, actionbar, and bossbars
+- `get_nearby_entities` - return nearby entities including armor stands, projectiles, and items
+- `get_recent_sounds_particles` - return client-observed sound and particle events
 
-### Allowed Commands
-- Building: `fill`, `clone`, `setblock`
-- Entities: `summon`, `tp`, `teleport`
-- Items: `give`
-- Game state: `gamemode`, `effect`, `enchant`, `weather`, `time`
-- Communication: `say`, `tell`, `title`
+## Safety Model
 
-### Blocked Operations
-- Mass entity destruction (`kill @a`, `kill @e`)
-- Excessive area operations (>50×50×50 blocks)
-- Mass item generation (>100 items)
-- Global creative mode assignment
+`execute_commands` validates commands before execution. By default it allows building/testing commands such as `fill`, `clone`, `setblock`, `summon`, `tp`, `give`, `gamemode`, `effect`, `enchant`, `weather`, `time`, `say`, `tell`, and `title`, while blocking risky patterns such as mass entity killing and oversized operations.
 
-## Development
+Unsafe chat commands bypass that allowlist and are disabled by default.
 
-### Building
+## Build From Source
 
-```bash
-./gradlew build
+```powershell
+.\gradlew.bat test build
 ```
 
-### Running in Development
+Built jar:
 
-```bash
-./gradlew runClient
+```text
+build/libs/mcp-server-mod-1.1.0+mc1.21.10.jar
 ```
 
-### Project Structure
+Run development client:
 
-```
-src/
-├── main/java/cuspymd/mcp/mod/
-│   ├── MCPServerMod.java           # Main mod class
-│   ├── MCPServerModClient.java     # Client initializer
-│   ├── server/                     # MCP server implementation
-│   ├── command/                    # Command execution system
-│   ├── config/                     # Configuration management
-│   └── utils/                      # Utility classes
-└── main/resources/
-    ├── fabric.mod.json             # Mod metadata
-    └── *.mixins.json              # Mixin configurations
+```powershell
+.\gradlew.bat runClient
 ```
 
-## API Reference
+## Release Verification
 
-### MCP Endpoints
+This release branch was verified with:
 
-- `POST /mcp/initialize` - Initialize MCP session
-- `POST /mcp/ping` - Health check
-- `POST /mcp/tools/list` - List available tools
-- `POST /mcp/tools/call` - Execute commands
-
-### Tool: execute_commands
-
-Execute one or more Minecraft commands sequentially with safety validation.
-
-**Parameters:**
-- `commands` (array): List of Minecraft commands (without leading slash)
-- `validate_safety` (boolean): Enable safety validation (default: true)
-
-**Response schema (text payload JSON):**
-- Top-level: `totalCommands`, `acceptedCount`, `appliedCount`, `failedCount`, `results`, `chatMessages`
-- Per command: `index`, `command`, `status`, `accepted`, `applied`, `summary`, `chatMessages`
-- `status` values: `applied`, `rejected_by_game`, `execution_error`, `timed_out`, `rejected_by_safety`, `unknown`
-
-**Example Request:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "execute_commands",
-    "arguments": {
-      "commands": [
-        "fill ~ ~ ~ ~10 ~5 ~8 oak_planks",
-        "setblock ~5 ~6 ~4 oak_door"
-      ],
-      "validate_safety": true
-    }
-  }
-}
+```powershell
+.\gradlew.bat test build
 ```
 
-### Tool: execute_chat_commands
+## Known Notes
 
-Execute one or more arbitrary player chat commands sequentially for plugin or admin testing.
-
-**Parameters:**
-- `commands` (array): List of commands, with or without a leading slash
-
-**Notes:**
-- Available only when `server.enableUnsafeChatCommands` is `true`
-- Bypasses the normal `execute_commands` allowlist and safety validator
-- Intended for trusted local testing only
-
-**Example Request:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "execute_chat_commands",
-    "arguments": {
-      "commands": [
-        "/customgear ammo",
-        "/mtgrinding debug"
-      ]
-    }
-  }
-}
-```
-
-### Tool: get_player_info
-
-Get comprehensive player information including position, facing direction, health, inventory, and game state.
-
-**Parameters:** None required
-
-**Response includes:**
-- Exact position (x, y, z coordinates) and block coordinates
-- Facing direction (yaw, pitch, cardinal direction)  
-- Calculated front position for building (3 blocks ahead)
-- Look vector for directional calculations
-- Health, food, and experience status
-- Current game mode and dimension
-- World time information
-- Inventory details (selected slot, main/off-hand items)
-
-**Example Request:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "get_player_info",
-    "arguments": {}
-  }
-}
-```
-
-### Tool: get_blocks_in_area
-
-Scan and retrieve all non-air blocks within a specified rectangular area. Useful for analyzing structures or checking build areas.
-
-**Parameters:**
-- `from` (object): Starting position with x, y, z coordinates
-- `to` (object): Ending position with x, y, z coordinates
-
-**Response includes:**
-- List of all non-air blocks in the area
-- Block types and positions
-- Total block count
-- Area dimensions and validation info
-
-**Example Request:**
-```json
-{
-  "method": "tools/call", 
-  "params": {
-    "name": "get_blocks_in_area",
-    "arguments": {
-      "from": {"x": 100, "y": 64, "z": 200},
-      "to": {"x": 110, "y": 74, "z": 210}
-    }
-  }
-}
-```
-
-**Note:** Maximum area size per axis is limited by server configuration (default: 50 blocks).
-
-### Tool: take_screenshot
-
-Capture a screenshot of the current Minecraft game screen. Optionally, you can specify coordinates and rotation to move the player and set their gaze before taking the screenshot.
-
-**Parameters:**
-- `x` (number, optional): X coordinate to teleport the player to.
-- `y` (number, optional): Y coordinate to teleport the player to.
-- `z` (number, optional): Z coordinate to teleport the player to.
-- `yaw` (number, optional): Yaw rotation (0-360) for horizontal view.
-- `pitch` (number, optional): Pitch rotation (-90 to 90) for vertical view.
-
-**Response includes:**
-- Base64 encoded PNG image data.
-- MIME type (`image/png`).
-
-**Example Request:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "take_screenshot",
-    "arguments": {
-      "x": 120.5,
-      "y": 70,
-      "z": -200.5,
-      "yaw": 180,
-      "pitch": 0
-    }
-  }
-}
-```
-
-### Tool: get_current_screen
-
-Inspect the currently open screen. For handled inventory screens, the response includes the screen title, class name, sync id, cursor stack, and all slot contents.
-
-**Parameters:** None required
-
-### Tool: click_screen_slot
-
-Click a slot in the currently open handled inventory screen.
-
-**Parameters:**
-- `slot` (integer, required): Slot id from `get_current_screen`
-- `button` (integer, optional): Mouse button index. `0` = left, `1` = right
-- `action` (string, optional): Slot action type. Defaults to `PICKUP`
-
-**Notes:**
-- Available only when `server.enableGuiAutomationTools` is `true`
-- Intended for local GUI testing and inventory automation
-
-### Tool: close_current_screen
-
-Close the current client screen.
-
-**Parameters:** None required
-
-## Debugging
-
-### Local Screenshot Storage
-
-For debugging purposes, you can enable local saving of every screenshot captured by the MCP server.
-
-1. Open `config/mcp-client.json`.
-2. Set `"saveScreenshotsForDebug": true` in the `client` section.
-3. Screenshots will be saved to the `mcp_debug_screenshots/` directory in your Minecraft instance folder.
-4. Files are named using the pattern: `screenshot_YYYYMMDD_HHMMSS_SSS.png`.
-
-## License
-
-This project is licensed under the CC0-1.0 License.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly (See [TESTING.md](TESTING.md) for more info)
-5. Submit a pull request
-
-## Support
-
-For issues and questions:
-- Check the [Issues](https://github.com/your-repo/issues) page
-- Review the configuration documentation
-- Enable debug logging for detailed troubleshooting
+- This is a client-side automation/testing mod.
+- Keep the MCP endpoint bound to localhost unless you fully trust the network.
+- GUI and unsafe chat tools are intentionally opt-in.
