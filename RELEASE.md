@@ -12,6 +12,7 @@ Public Fabric release for Minecraft 1.21.10.
 - Safe command execution plus opt-in arbitrary chat commands.
 - Screenshot capture with optional camera position and rotation.
 - GUI screen inspection and menu/inventory click automation.
+- GUI text input with `type_text`, including sign editors and text fields.
 - In-world left/right click, block attack, hotbar selection, movement, sneak, chat wait, scoreboard/HUD/entity/sound/particle inspection tools.
 
 ## Install
