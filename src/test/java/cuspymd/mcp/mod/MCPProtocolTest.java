@@ -54,7 +54,12 @@ public class MCPProtocolTest {
             "get_client_disconnect",
             "get_bossbar_actionbar_titles",
             "get_nearby_entities",
-            "get_recent_sounds_particles"
+            "get_recent_sounds_particles",
+            "keybind_input",
+            "keyboard_input",
+            "mouse_input",
+            "look_input",
+            "open_inventory"
         )));
     }
 }

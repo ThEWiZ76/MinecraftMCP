@@ -133,12 +133,24 @@ public class HTTPMCPServer {
                 case "type_text" -> requireGuiTools() ? ScreenAutomationUtils.typeText(arguments) : guiDisabled();
                 case "wait_for_screen" -> requireGuiTools() ? ScreenAutomationUtils.waitForScreen(arguments) : guiDisabled();
                 case "close_current_screen" -> requireGuiTools() ? ScreenAutomationUtils.closeCurrentScreen() : guiDisabled();
+                case "attack_block" -> ClientInputUtils.attackBlock(arguments);
+                case "left_click_air" -> ClientInputUtils.leftClickAir(arguments);
                 case "right_click_block" -> ClientInputUtils.rightClickBlock(arguments);
                 case "right_click_item" -> ClientInputUtils.rightClickItem(arguments);
                 case "set_held_slot" -> ClientInputUtils.setHeldSlot(arguments);
                 case "movement_input" -> ClientInputUtils.movementInput(arguments);
+                case "keybind_input" -> ClientInputUtils.keybindInput(arguments);
+                case "keyboard_input" -> ClientInputUtils.keyboardInput(arguments);
+                case "mouse_input" -> ClientInputUtils.mouseInput(arguments);
+                case "look_input" -> ClientInputUtils.lookInput(arguments);
+                case "open_inventory" -> ClientInputUtils.openInventory(arguments);
                 case "sneak" -> ClientInputUtils.sneak(arguments);
                 case "wait_for_chat" -> ClientInputUtils.waitForChat(arguments);
+                case "get_scoreboard" -> ClientInputUtils.getScoreboard();
+                case "get_client_disconnect" -> ClientInputUtils.getClientDisconnect();
+                case "get_bossbar_actionbar_titles" -> ClientInputUtils.getBossbarActionbarTitles();
+                case "get_nearby_entities" -> ClientInputUtils.getNearbyEntities(arguments);
+                case "get_recent_sounds_particles" -> ClientInputUtils.getRecentSoundsParticles(arguments);
                 default -> MCPProtocol.createErrorResponse("Unknown tool: " + toolName, null);
             };
         } catch (Exception e) {

@@ -111,27 +111,31 @@ GUI tools, when `enableGuiAutomationTools` is true:
 - `type_text`
 - `wait_for_screen`
 - `close_current_screen`
+- `open_inventory`
 
 World and input tools:
 
+- `attack_block` - start, hold, release, or hold until block break completes
+- `left_click_air` - single attack swing without block target
 - `right_click_block` - right-click exact block face
 - `right_click_item` - use held item in air
 - `set_held_slot` - select hotbar slot 0-8
 - `movement_input` - press/release movement keys for a number of ticks
+- `keybind_input` - tap, press, release, or hold named Minecraft keybindings
+- `keyboard_input` - send raw key events to the current screen or client
+- `mouse_input` - send raw click, scroll, or drag events to the current screen
+- `look_input` - set or adjust player yaw/pitch
 - `sneak` - press, release, toggle, or hold sneak
 - `wait_for_chat` - wait for literal chat text or regex
+- `get_scoreboard` - return sidebar title and ordered lines
+- `get_client_disconnect` - return last disconnect state when captured
+- `get_bossbar_actionbar_titles` - return title/actionbar/bossbar state
+- `get_nearby_entities` - return nearby entities
+- `get_recent_sounds_particles` - return captured sound and particle events when hooks are available
 
 ## NeoForge Parity Notes
 
-The Fabric branch currently has additional client-observation tools that are not yet ported to NeoForge:
-
-- `attack_block`
-- `left_click_air`
-- `get_scoreboard`
-- `get_client_disconnect`
-- `get_bossbar_actionbar_titles`
-- `get_nearby_entities`
-- `get_recent_sounds_particles`
+NeoForge HUD, disconnect, sound, and particle capture currently return empty/default snapshots unless NeoForge-specific event hooks are added later. Gameplay input, screen input, block attack, right-click, scoreboard, and nearby entity tools are implemented.
 
 ## Safety Model
 

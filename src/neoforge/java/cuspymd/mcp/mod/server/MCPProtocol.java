@@ -52,6 +52,15 @@ public final class MCPProtocol {
         if (config != null && config.getServer().isEnableGuiAutomationTools()) {
             addGuiAutomationTools(tools);
         }
+        tools.add(tool("attack_block",
+            "Start, hold, release, or hold-until-broken left mouse attack on a target block face. Use for real client-side block breaking.",
+            objectSchema(props(
+                "pos", positionProperty("Target block position"),
+                "face", stringProperty("Block face: north, south, east, west, up, down"),
+                "mode", stringProperty("start, hold, release, or break_until_done"),
+                "ticks", integerProperty("Hold duration in ticks for hold/break_until_done. Default 1, max 200")
+            ), "pos")));
+        tools.add(tool("left_click_air", "Perform one attack swing without a block target.", objectSchema(new JsonObject())));
         tools.add(tool("right_click_block", "Right-click an exact block face with the held item.", objectSchema(props(
             "pos", positionProperty("Target block position"),
             "face", stringProperty("Block face: north, south, east, west, up, down"),
@@ -66,6 +75,48 @@ public final class MCPProtocol {
             "pressed", booleanProperty("true presses, false releases. Default true"),
             "ticks", integerProperty("Ticks to hold before auto-release. 0 means no auto-release")
         ), "keys")));
+        tools.add(tool("keybind_input",
+            "Press, release, hold, or tap named Minecraft keybindings. Covers inventory, chat, command, attack/use, hotbar1-9, screenshot, perspective, fullscreen, and movement keybinds.",
+            objectSchema(props(
+                "keybind", stringProperty("Single keybind name, for example inventory, chat, attack, use, hotbar1, screenshot, perspective"),
+                "keybinds", arrayProperty("Multiple keybind names"),
+                "action", stringProperty("tap, press, release, or hold. Default tap"),
+                "ticks", integerProperty("Ticks to hold when action=hold. Default 1; max 200")
+            ))));
+        tools.add(tool("keyboard_input",
+            "Send raw keyboard key events to the current screen, or to global client key handling when no screen is open. Use keybind_input for gameplay actions where possible.",
+            objectSchema(props(
+                "key", stringProperty("Key name such as e, enter, escape, tab, space, up, down, f2, slash"),
+                "action", stringProperty("tap, press, release, or hold. Default tap"),
+                "ticks", integerProperty("Reserved hold duration in ticks. Default 1"),
+                "modifiers", arrayProperty("Optional modifiers: shift, ctrl, alt, super"),
+                "shift", booleanProperty("Set shift modifier"),
+                "ctrl", booleanProperty("Set control modifier"),
+                "alt", booleanProperty("Set alt modifier")
+            ), "key")));
+        tools.add(tool("mouse_input",
+            "Send raw mouse events to the currently open screen: click, double_click, press, release, scroll, or drag using scaled GUI coordinates.",
+            objectSchema(props(
+                "action", stringProperty("click, double_click, press, release, scroll, or drag. Default click"),
+                "x", numberProperty("Scaled GUI X coordinate. Defaults to screen center"),
+                "y", numberProperty("Scaled GUI Y coordinate. Defaults to screen center"),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right, 2 = middle. Default 0"),
+                "scrollX", numberProperty("Horizontal scroll delta for action=scroll"),
+                "scrollY", numberProperty("Vertical scroll delta for action=scroll"),
+                "toX", numberProperty("Drag target scaled GUI X coordinate"),
+                "toY", numberProperty("Drag target scaled GUI Y coordinate")
+            ))));
+        tools.add(tool("look_input",
+            "Set or adjust player camera yaw/pitch. Use before screenshots or directional interaction tests.",
+            objectSchema(props(
+                "yaw", numberProperty("Absolute yaw in degrees"),
+                "pitch", numberProperty("Absolute pitch in degrees, clamped -90..90"),
+                "deltaYaw", numberProperty("Relative yaw adjustment"),
+                "deltaPitch", numberProperty("Relative pitch adjustment")
+            ))));
+        tools.add(tool("open_inventory",
+            "Open the player inventory screen on the client. Use when tests need a deterministic E/inventory screen state.",
+            objectSchema(new JsonObject())));
         tools.add(tool("sneak", "Press, release, toggle, or hold sneak.", objectSchema(props(
             "mode", stringProperty("press, release, toggle, hold"),
             "ticks", integerProperty("Ticks for hold")
@@ -74,6 +125,15 @@ public final class MCPProtocol {
             "text", stringProperty("Literal text"),
             "regex", stringProperty("Java regex"),
             "timeout_ms", integerProperty("Timeout milliseconds")
+        ))));
+        tools.add(tool("get_scoreboard", "Return visible sidebar scoreboard title, ordered lines, and scores.", objectSchema(new JsonObject())));
+        tools.add(tool("get_client_disconnect", "Return last captured disconnect screen text and exception details, if available.", objectSchema(new JsonObject())));
+        tools.add(tool("get_bossbar_actionbar_titles", "Return visible actionbar/title/bossbar text captured or observable on client.", objectSchema(new JsonObject())));
+        tools.add(tool("get_nearby_entities", "Return nearby entities including armor stands, projectiles, and items within radius.", objectSchema(props(
+            "radius", numberProperty("Radius in blocks. Default 16, max 128")
+        ))));
+        tools.add(tool("get_recent_sounds_particles", "Return client-observed sound and particle events from last N seconds when capture hooks are available.", objectSchema(props(
+            "seconds", numberProperty("Lookback seconds. Default 5, max 60")
         ))));
         return tools;
     }

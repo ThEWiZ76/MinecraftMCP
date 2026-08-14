@@ -400,6 +400,48 @@ public class MCPProtocol {
                 "pressed", booleanProperty("true presses keys, false releases keys. Default true"),
                 "ticks", integerProperty("Ticks to hold before auto-release. Default 1; 0 means no auto-release")
             ), "keys")));
+        tools.add(tool("keybind_input",
+            "Press, release, hold, or tap named Minecraft keybindings. Covers inventory, chat, command, attack/use, hotbar1-9, screenshot, perspective, fullscreen, and movement keybinds.",
+            objectSchema(props(
+                "keybind", stringProperty("Single keybind name, for example inventory, chat, attack, use, hotbar1, screenshot, perspective"),
+                "keybinds", arrayProperty("Multiple keybind names"),
+                "action", stringProperty("tap, press, release, or hold. Default tap"),
+                "ticks", integerProperty("Ticks to hold when action=hold. Default 1; max 200")
+            ))));
+        tools.add(tool("keyboard_input",
+            "Send raw keyboard key events to the current screen, or to global client key handling when no screen is open. Use keybind_input for gameplay actions where possible.",
+            objectSchema(props(
+                "key", stringProperty("Key name such as e, enter, escape, tab, space, up, down, f2, slash"),
+                "action", stringProperty("tap, press, release, or hold. Default tap"),
+                "ticks", integerProperty("Reserved hold duration in ticks. Default 1"),
+                "modifiers", arrayProperty("Optional modifiers: shift, ctrl, alt, super"),
+                "shift", booleanProperty("Set shift modifier"),
+                "ctrl", booleanProperty("Set control modifier"),
+                "alt", booleanProperty("Set alt modifier")
+            ), "key")));
+        tools.add(tool("mouse_input",
+            "Send raw mouse events to the currently open screen: click, double_click, press, release, scroll, or drag using scaled GUI coordinates.",
+            objectSchema(props(
+                "action", stringProperty("click, double_click, press, release, scroll, or drag. Default click"),
+                "x", numberProperty("number", "Scaled GUI X coordinate. Defaults to screen center"),
+                "y", numberProperty("number", "Scaled GUI Y coordinate. Defaults to screen center"),
+                "button", integerProperty("Mouse button index. 0 = left, 1 = right, 2 = middle. Default 0"),
+                "scrollX", numberProperty("number", "Horizontal scroll delta for action=scroll"),
+                "scrollY", numberProperty("number", "Vertical scroll delta for action=scroll"),
+                "toX", numberProperty("number", "Drag target scaled GUI X coordinate"),
+                "toY", numberProperty("number", "Drag target scaled GUI Y coordinate")
+            ))));
+        tools.add(tool("look_input",
+            "Set or adjust player camera yaw/pitch. Use before screenshots or directional interaction tests.",
+            objectSchema(props(
+                "yaw", numberProperty("number", "Absolute yaw in degrees"),
+                "pitch", numberProperty("number", "Absolute pitch in degrees, clamped -90..90"),
+                "deltaYaw", numberProperty("number", "Relative yaw adjustment"),
+                "deltaPitch", numberProperty("number", "Relative pitch adjustment")
+            ))));
+        tools.add(tool("open_inventory",
+            "Open the player inventory screen on the client. Use when tests need a deterministic E/inventory screen state.",
+            objectSchema(new JsonObject())));
         tools.add(tool("sneak",
             "Press, release, toggle, or hold sneak/shift.",
             objectSchema(props(
