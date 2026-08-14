@@ -108,6 +108,7 @@ GUI tools, when `enableGuiAutomationTools` is true:
 - `click_screen_button`
 - `click_screen_entry`
 - `click_screen_xy`
+- `type_text`
 - `wait_for_screen`
 - `close_current_screen`
 

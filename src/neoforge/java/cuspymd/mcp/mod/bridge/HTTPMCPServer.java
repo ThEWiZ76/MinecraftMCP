@@ -130,6 +130,7 @@ public class HTTPMCPServer {
                 case "click_screen_button" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenButton(arguments) : guiDisabled();
                 case "click_screen_entry" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenEntry(arguments) : guiDisabled();
                 case "click_screen_xy" -> requireGuiTools() ? ScreenAutomationUtils.clickScreenXy(arguments) : guiDisabled();
+                case "type_text" -> requireGuiTools() ? ScreenAutomationUtils.typeText(arguments) : guiDisabled();
                 case "wait_for_screen" -> requireGuiTools() ? ScreenAutomationUtils.waitForScreen(arguments) : guiDisabled();
                 case "close_current_screen" -> requireGuiTools() ? ScreenAutomationUtils.closeCurrentScreen() : guiDisabled();
                 case "right_click_block" -> ClientInputUtils.rightClickBlock(arguments);

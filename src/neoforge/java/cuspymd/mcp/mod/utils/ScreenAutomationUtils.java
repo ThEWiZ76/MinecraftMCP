@@ -13,6 +13,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -52,6 +53,10 @@ public final class ScreenAutomationUtils {
 
     public static JsonObject clickScreenXy(JsonObject params) {
         return await(runOnClient(client -> clickScreenXyNow(client, params)), "click screen xy");
+    }
+
+    public static JsonObject typeText(JsonObject params) {
+        return await(runOnClient(client -> typeTextNow(client, params)), "type text");
     }
 
     public static JsonObject waitForScreen(JsonObject params) {
@@ -214,6 +219,52 @@ public final class ScreenAutomationUtils {
         return result;
     }
 
+    private static JsonObject typeTextNow(Minecraft client, JsonObject params) {
+        Screen screen = requireScreen(client);
+        if (params == null || !params.has("text")) {
+            throw new IllegalArgumentException("Missing required parameter: text");
+        }
+        String text = params.get("text").getAsString();
+        boolean submit = getBoolean(params, "submit", false);
+        int typedCharacters = 0;
+        int enterPresses = 0;
+        for (int offset = 0; offset < text.length(); ) {
+            int codePoint = text.codePointAt(offset);
+            offset += Character.charCount(codePoint);
+            if (codePoint == '\r') {
+                continue;
+            }
+            if (codePoint == '\n') {
+                pressKey(screen, GLFW.GLFW_KEY_ENTER);
+                enterPresses++;
+                continue;
+            }
+            if (!Character.isBmpCodePoint(codePoint)) {
+                throw new IllegalArgumentException("Supplementary Unicode input is not supported by Minecraft Screen.charTyped.");
+            }
+            char character = (char) codePoint;
+            int keyCode = keyCodeForCharacter(character);
+            if (keyCode != GLFW.GLFW_KEY_UNKNOWN) {
+                screen.keyPressed(keyCode, 0, 0);
+            }
+            screen.charTyped(character, 0);
+            if (keyCode != GLFW.GLFW_KEY_UNKNOWN) {
+                screen.keyReleased(keyCode, 0, 0);
+            }
+            typedCharacters++;
+        }
+        if (submit) {
+            pressKey(screen, GLFW.GLFW_KEY_ENTER);
+            enterPresses++;
+        }
+
+        JsonObject result = new JsonObject();
+        result.addProperty("typedCharacters", typedCharacters);
+        result.addProperty("enterPresses", enterPresses);
+        result.add("screen", inspectCurrentScreenNow(client));
+        return result;
+    }
+
     private static JsonObject closeCurrentScreenNow(Minecraft client) {
         JsonObject result = new JsonObject();
         Screen screen = client.screen;
@@ -225,6 +276,11 @@ public final class ScreenAutomationUtils {
         screen.onClose();
         result.addProperty("closed", true);
         return result;
+    }
+
+    private static void pressKey(Screen screen, int keyCode) {
+        screen.keyPressed(keyCode, 0, 0);
+        screen.keyReleased(keyCode, 0, 0);
     }
 
     private static JsonObject waitForScreenNow(JsonObject params) {
@@ -565,6 +621,43 @@ public final class ScreenAutomationUtils {
 
     private static boolean getBoolean(JsonObject params, String key, boolean defaultValue) {
         return params != null && params.has(key) ? params.get(key).getAsBoolean() : defaultValue;
+    }
+
+    static int keyCodeForCharacter(char character) {
+        if (character >= 'a' && character <= 'z') {
+            return GLFW.GLFW_KEY_A + (character - 'a');
+        }
+        if (character >= 'A' && character <= 'Z') {
+            return GLFW.GLFW_KEY_A + (character - 'A');
+        }
+        if (character >= '1' && character <= '9') {
+            return GLFW.GLFW_KEY_1 + (character - '1');
+        }
+        return switch (character) {
+            case '0', ')' -> GLFW.GLFW_KEY_0;
+            case '!' -> GLFW.GLFW_KEY_1;
+            case '@' -> GLFW.GLFW_KEY_2;
+            case '#' -> GLFW.GLFW_KEY_3;
+            case '$' -> GLFW.GLFW_KEY_4;
+            case '%' -> GLFW.GLFW_KEY_5;
+            case '^' -> GLFW.GLFW_KEY_6;
+            case '&' -> GLFW.GLFW_KEY_7;
+            case '*' -> GLFW.GLFW_KEY_8;
+            case '(' -> GLFW.GLFW_KEY_9;
+            case '-', '_' -> GLFW.GLFW_KEY_MINUS;
+            case '=', '+' -> GLFW.GLFW_KEY_EQUAL;
+            case '[', '{' -> GLFW.GLFW_KEY_LEFT_BRACKET;
+            case ']', '}' -> GLFW.GLFW_KEY_RIGHT_BRACKET;
+            case ';', ':' -> GLFW.GLFW_KEY_SEMICOLON;
+            case '\'', '"' -> GLFW.GLFW_KEY_APOSTROPHE;
+            case '`', '~' -> GLFW.GLFW_KEY_GRAVE_ACCENT;
+            case '\\', '|' -> GLFW.GLFW_KEY_BACKSLASH;
+            case ',', '<' -> GLFW.GLFW_KEY_COMMA;
+            case '.', '>' -> GLFW.GLFW_KEY_PERIOD;
+            case '/', '?' -> GLFW.GLFW_KEY_SLASH;
+            case ' ' -> GLFW.GLFW_KEY_SPACE;
+            default -> GLFW.GLFW_KEY_UNKNOWN;
+        };
     }
 
     private static String getFirstString(JsonObject params, String... keys) {

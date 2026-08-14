@@ -117,6 +117,12 @@ public final class MCPProtocol {
                 "button", integerProperty("Mouse button index. 0 = left, 1 = right. Default 0."),
                 "doubleClick", booleanProperty("Click twice. Default false.")
             ), "x", "y")));
+        tools.add(tool("type_text",
+            "Type text into the current screen by invoking Minecraft screen keyboard handlers on the client thread. Newlines press Enter.",
+            objectSchema(props(
+                "text", stringProperty("Text to type. Use \\n for Enter."),
+                "submit", booleanProperty("Press Enter after typing. Default false.")
+            ), "text")));
         tools.add(tool("wait_for_screen",
             "Wait until current screen title/class matches.",
             objectSchema(props(
