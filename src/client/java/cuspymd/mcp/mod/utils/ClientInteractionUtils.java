@@ -6,6 +6,11 @@ import com.google.gson.JsonObject;
 import cuspymd.mcp.mod.command.ChatMessageCapture;
 import cuspymd.mcp.mod.mixin.client.BossBarHudAccessor;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.boss.BossBar;
@@ -19,9 +24,11 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -155,6 +162,162 @@ public final class ClientInteractionUtils {
                 keyNames.add(key.getId());
             }
             result.add("keys", keyNames);
+            return result;
+        });
+    }
+
+    public static CompletableFuture<JsonObject> keybindInput(JsonObject params) {
+        return runOnClientThread(client -> {
+            List<KeyBinding> keyBindings = parseKeyBindings(client, params);
+            String action = getString(params, "action", "tap").toLowerCase(Locale.ROOT);
+            int ticks = clamp(getInt(params, "ticks", 1), 0, MAX_HOLD_TICKS);
+            boolean pressed = switch (action) {
+                case "tap", "press", "hold" -> true;
+                case "release" -> false;
+                default -> throw new IllegalArgumentException("Unsupported keybind_input action: " + action);
+            };
+
+            for (KeyBinding key : keyBindings) {
+                if ("tap".equals(action)) {
+                    clickKeyBinding(key);
+                    releaseKeyBinding(key);
+                } else if (pressed) {
+                    pressKeyBinding(key, "press".equals(action));
+                } else {
+                    releaseKeyBinding(key);
+                }
+            }
+            if ("hold".equals(action) && ticks > 0) {
+                scheduleKeyRelease(keyBindings, ticks);
+            }
+
+            JsonObject result = new JsonObject();
+            result.addProperty("action", action);
+            result.addProperty("pressed", pressed);
+            result.addProperty("ticks", ticks);
+            JsonArray names = new JsonArray();
+            for (KeyBinding key : keyBindings) {
+                names.add(key.getId());
+            }
+            result.add("keybinds", names);
+            return result;
+        });
+    }
+
+    public static CompletableFuture<JsonObject> keyboardInput(JsonObject params) {
+        return runOnClientThread(client -> {
+            if (params == null || !params.has("key")) {
+                throw new IllegalArgumentException("Missing required parameter: key");
+            }
+            int keyCode = keyCodeForName(params.get("key").getAsString());
+            int modifiers = parseModifiers(params);
+            int ticks = clamp(getInt(params, "ticks", 1), 0, MAX_HOLD_TICKS);
+            String action = getString(params, "action", "tap").toLowerCase(Locale.ROOT);
+            KeyInput input = new KeyInput(keyCode, 0, modifiers);
+            Screen screen = client.currentScreen;
+            if (screen != null) {
+                switch (action) {
+                    case "tap" -> {
+                        screen.keyPressed(input);
+                        screen.keyReleased(input);
+                    }
+                    case "press", "hold" -> screen.keyPressed(input);
+                    case "release" -> screen.keyReleased(input);
+                    default -> throw new IllegalArgumentException("Unsupported keyboard_input action: " + action);
+                }
+            } else {
+                InputUtil.Key rawKey = InputUtil.fromKeyCode(input);
+                switch (action) {
+                    case "tap" -> {
+                        KeyBinding.onKeyPressed(rawKey);
+                        KeyBinding.setKeyPressed(rawKey, true);
+                        KeyBinding.setKeyPressed(rawKey, false);
+                    }
+                    case "press", "hold" -> KeyBinding.setKeyPressed(rawKey, true);
+                    case "release" -> KeyBinding.setKeyPressed(rawKey, false);
+                    default -> throw new IllegalArgumentException("Unsupported keyboard_input action: " + action);
+                }
+            }
+
+            JsonObject result = new JsonObject();
+            result.addProperty("action", action);
+            result.addProperty("keyCode", keyCode);
+            result.addProperty("modifiers", modifiers);
+            result.addProperty("ticks", ticks);
+            result.addProperty("screenEvent", screen != null);
+            return result;
+        });
+    }
+
+    public static CompletableFuture<JsonObject> mouseInput(JsonObject params) {
+        return runOnClientThread(client -> {
+            Screen screen = client.currentScreen;
+            if (screen == null) {
+                throw new IllegalStateException("No current screen is open. Use attack_block/right_click_item for in-world mouse actions.");
+            }
+            String action = getString(params, "action", "click").toLowerCase(Locale.ROOT);
+            double x = getDouble(params, "x", screen.width / 2.0);
+            double y = getDouble(params, "y", screen.height / 2.0);
+            int button = getInt(params, "button", 0);
+            Click click = new Click(x, y, new MouseInput(button, 0));
+            switch (action) {
+                case "click" -> {
+                    screen.mouseClicked(click, false);
+                    screen.mouseReleased(click);
+                }
+                case "double_click" -> {
+                    screen.mouseClicked(click, false);
+                    screen.mouseReleased(click);
+                    screen.mouseClicked(click, true);
+                    screen.mouseReleased(click);
+                }
+                case "press" -> screen.mouseClicked(click, false);
+                case "release" -> screen.mouseReleased(click);
+                case "scroll" -> screen.mouseScrolled(x, y, getDouble(params, "scrollX", 0.0), getDouble(params, "scrollY", 0.0));
+                case "drag" -> {
+                    double toX = getDouble(params, "toX", x);
+                    double toY = getDouble(params, "toY", y);
+                    screen.mouseClicked(click, false);
+                    screen.mouseDragged(new Click(toX, toY, new MouseInput(button, 0)), toX - x, toY - y);
+                    screen.mouseReleased(new Click(toX, toY, new MouseInput(button, 0)));
+                }
+                default -> throw new IllegalArgumentException("Unsupported mouse_input action: " + action);
+            }
+            JsonObject result = new JsonObject();
+            result.addProperty("action", action);
+            result.addProperty("x", x);
+            result.addProperty("y", y);
+            result.addProperty("button", button);
+            result.addProperty("screenClass", screen.getClass().getName());
+            return result;
+        });
+    }
+
+    public static CompletableFuture<JsonObject> lookInput(JsonObject params) {
+        return runOnClientThread(client -> {
+            requireWorld(client);
+            float yaw = params != null && params.has("yaw") ? params.get("yaw").getAsFloat() : client.player.getYaw();
+            float pitch = params != null && params.has("pitch") ? params.get("pitch").getAsFloat() : client.player.getPitch();
+            yaw += params != null && params.has("deltaYaw") ? params.get("deltaYaw").getAsFloat() : 0.0F;
+            pitch += params != null && params.has("deltaPitch") ? params.get("deltaPitch").getAsFloat() : 0.0F;
+            pitch = Math.max(-90.0F, Math.min(90.0F, pitch));
+            client.player.setYaw(yaw);
+            client.player.setPitch(pitch);
+            client.player.setHeadYaw(yaw);
+            JsonObject result = new JsonObject();
+            result.addProperty("yaw", yaw);
+            result.addProperty("pitch", pitch);
+            return result;
+        });
+    }
+
+    public static CompletableFuture<JsonObject> openInventory(JsonObject params) {
+        return runOnClientThread(client -> {
+            requireWorld(client);
+            client.setScreen(new InventoryScreen(client.player));
+            JsonObject result = new JsonObject();
+            result.addProperty("opened", client.currentScreen != null);
+            result.addProperty("screenClass", client.currentScreen == null ? "" : client.currentScreen.getClass().getName());
             return result;
         });
     }
@@ -328,6 +491,28 @@ public final class ClientInteractionUtils {
         }
     }
 
+    private static void pressKeyBinding(KeyBinding key, boolean countClick) {
+        InputUtil.Key rawKey = InputUtil.fromTranslationKey(key.getBoundKeyTranslationKey());
+        if (countClick) {
+            KeyBinding.onKeyPressed(rawKey);
+        }
+        KeyBinding.setKeyPressed(rawKey, true);
+        key.setPressed(true);
+    }
+
+    private static void clickKeyBinding(KeyBinding key) {
+        InputUtil.Key rawKey = InputUtil.fromTranslationKey(key.getBoundKeyTranslationKey());
+        KeyBinding.onKeyPressed(rawKey);
+        KeyBinding.setKeyPressed(rawKey, true);
+        key.setPressed(true);
+    }
+
+    private static void releaseKeyBinding(KeyBinding key) {
+        InputUtil.Key rawKey = InputUtil.fromTranslationKey(key.getBoundKeyTranslationKey());
+        KeyBinding.setKeyPressed(rawKey, false);
+        key.setPressed(false);
+    }
+
     private static CompletableFuture<JsonObject> runOnClientThread(ClientAction action) {
         MinecraftClient client = MinecraftClient.getInstance();
         CompletableFuture<JsonObject> future = new CompletableFuture<>();
@@ -396,6 +581,138 @@ public final class ClientInteractionUtils {
         return new ParsedKeys(keys, hasJump);
     }
 
+    private static List<KeyBinding> parseKeyBindings(MinecraftClient client, JsonObject params) {
+        JsonArray values = new JsonArray();
+        if (params != null && params.has("keybinds") && params.get("keybinds").isJsonArray()) {
+            values = params.getAsJsonArray("keybinds");
+        } else if (params != null && params.has("keybind")) {
+            values.add(params.get("keybind").getAsString());
+        } else {
+            throw new IllegalArgumentException("Missing required parameter: keybind or keybinds");
+        }
+        List<KeyBinding> keys = new ArrayList<>();
+        for (JsonElement element : values) {
+            keys.add(resolveKeyBinding(client, element.getAsString()));
+        }
+        return keys;
+    }
+
+    private static KeyBinding resolveKeyBinding(MinecraftClient client, String rawName) {
+        String name = normalizeKeyName(rawName);
+        if (name.startsWith("hotbar")) {
+            int slot = Integer.parseInt(name.substring("hotbar".length()));
+            if (slot < 1 || slot > 9) {
+                throw new IllegalArgumentException("Hotbar keybind must be hotbar1 through hotbar9");
+            }
+            return client.options.hotbarKeys[slot - 1];
+        }
+        return switch (name) {
+            case "w", "forward", "up" -> client.options.forwardKey;
+            case "s", "back", "backward", "down" -> client.options.backKey;
+            case "a", "left" -> client.options.leftKey;
+            case "d", "right" -> client.options.rightKey;
+            case "jump", "space" -> client.options.jumpKey;
+            case "sneak", "shift" -> client.options.sneakKey;
+            case "sprint" -> client.options.sprintKey;
+            case "inventory", "e" -> client.options.inventoryKey;
+            case "drop", "q" -> client.options.dropKey;
+            case "swap_hands", "swapoffhand", "f" -> client.options.swapHandsKey;
+            case "attack", "leftmouse", "left_click" -> client.options.attackKey;
+            case "use", "rightmouse", "right_click" -> client.options.useKey;
+            case "pick_item", "middlemouse" -> client.options.pickItemKey;
+            case "chat", "t" -> client.options.chatKey;
+            case "command", "slash" -> client.options.commandKey;
+            case "player_list", "tab" -> client.options.playerListKey;
+            case "social" -> client.options.socialInteractionsKey;
+            case "screenshot", "f2" -> client.options.screenshotKey;
+            case "perspective", "toggle_perspective", "f5" -> client.options.togglePerspectiveKey;
+            case "smooth_camera" -> client.options.smoothCameraKey;
+            case "fullscreen", "f11" -> client.options.fullscreenKey;
+            case "advancements", "l" -> client.options.advancementsKey;
+            default -> throw new IllegalArgumentException("Unsupported keybind: " + rawName);
+        };
+    }
+
+    static String normalizeKeyName(String rawName) {
+        return rawName == null ? "" : rawName.trim().toLowerCase(Locale.ROOT).replace("-", "_").replace(" ", "_").replace(".", "");
+    }
+
+    static int keyCodeForName(String rawName) {
+        String key = normalizeKeyName(rawName);
+        if (key.length() == 1) {
+            char c = key.charAt(0);
+            if (c >= 'a' && c <= 'z') {
+                return GLFW.GLFW_KEY_A + (c - 'a');
+            }
+            if (c >= '0' && c <= '9') {
+                return GLFW.GLFW_KEY_0 + (c - '0');
+            }
+        }
+        if (key.startsWith("f") && key.length() <= 3) {
+            int number = Integer.parseInt(key.substring(1));
+            if (number >= 1 && number <= 25) {
+                return GLFW.GLFW_KEY_F1 + (number - 1);
+            }
+        }
+        return switch (key) {
+            case "space" -> GLFW.GLFW_KEY_SPACE;
+            case "enter", "return" -> GLFW.GLFW_KEY_ENTER;
+            case "escape", "esc" -> GLFW.GLFW_KEY_ESCAPE;
+            case "tab" -> GLFW.GLFW_KEY_TAB;
+            case "backspace" -> GLFW.GLFW_KEY_BACKSPACE;
+            case "delete" -> GLFW.GLFW_KEY_DELETE;
+            case "insert" -> GLFW.GLFW_KEY_INSERT;
+            case "home" -> GLFW.GLFW_KEY_HOME;
+            case "end" -> GLFW.GLFW_KEY_END;
+            case "page_up", "pageup" -> GLFW.GLFW_KEY_PAGE_UP;
+            case "page_down", "pagedown" -> GLFW.GLFW_KEY_PAGE_DOWN;
+            case "up" -> GLFW.GLFW_KEY_UP;
+            case "down" -> GLFW.GLFW_KEY_DOWN;
+            case "left" -> GLFW.GLFW_KEY_LEFT;
+            case "right" -> GLFW.GLFW_KEY_RIGHT;
+            case "left_shift", "shift" -> GLFW.GLFW_KEY_LEFT_SHIFT;
+            case "left_control", "control", "ctrl" -> GLFW.GLFW_KEY_LEFT_CONTROL;
+            case "left_alt", "alt" -> GLFW.GLFW_KEY_LEFT_ALT;
+            case "slash" -> GLFW.GLFW_KEY_SLASH;
+            case "minus" -> GLFW.GLFW_KEY_MINUS;
+            case "equal", "equals" -> GLFW.GLFW_KEY_EQUAL;
+            case "comma" -> GLFW.GLFW_KEY_COMMA;
+            case "period", "dot" -> GLFW.GLFW_KEY_PERIOD;
+            case "semicolon" -> GLFW.GLFW_KEY_SEMICOLON;
+            case "apostrophe" -> GLFW.GLFW_KEY_APOSTROPHE;
+            case "grave", "backtick" -> GLFW.GLFW_KEY_GRAVE_ACCENT;
+            case "left_bracket" -> GLFW.GLFW_KEY_LEFT_BRACKET;
+            case "right_bracket" -> GLFW.GLFW_KEY_RIGHT_BRACKET;
+            case "backslash" -> GLFW.GLFW_KEY_BACKSLASH;
+            default -> throw new IllegalArgumentException("Unsupported keyboard key: " + rawName);
+        };
+    }
+
+    private static int parseModifiers(JsonObject params) {
+        int modifiers = 0;
+        if (getBoolean(params, "shift", false)) {
+            modifiers |= GLFW.GLFW_MOD_SHIFT;
+        }
+        if (getBoolean(params, "ctrl", false) || getBoolean(params, "control", false)) {
+            modifiers |= GLFW.GLFW_MOD_CONTROL;
+        }
+        if (getBoolean(params, "alt", false)) {
+            modifiers |= GLFW.GLFW_MOD_ALT;
+        }
+        if (params != null && params.has("modifiers") && params.get("modifiers").isJsonArray()) {
+            for (JsonElement element : params.getAsJsonArray("modifiers")) {
+                switch (normalizeKeyName(element.getAsString())) {
+                    case "shift" -> modifiers |= GLFW.GLFW_MOD_SHIFT;
+                    case "ctrl", "control" -> modifiers |= GLFW.GLFW_MOD_CONTROL;
+                    case "alt" -> modifiers |= GLFW.GLFW_MOD_ALT;
+                    case "super", "meta" -> modifiers |= GLFW.GLFW_MOD_SUPER;
+                    default -> throw new IllegalArgumentException("Unsupported keyboard modifier: " + element.getAsString());
+                }
+            }
+        }
+        return modifiers;
+    }
+
     private static JsonObject serializeChatMessage(ChatMessageCapture.CapturedMessage message) {
         JsonObject result = new JsonObject();
         result.addProperty("text", message.text());
@@ -430,6 +747,10 @@ public final class ClientInteractionUtils {
 
     private static double getDouble(JsonObject params, String field, double fallback) {
         return params != null && params.has(field) ? params.get(field).getAsDouble() : fallback;
+    }
+
+    private static boolean getBoolean(JsonObject params, String field, boolean fallback) {
+        return params != null && params.has(field) ? params.get(field).getAsBoolean() : fallback;
     }
 
     private static int clamp(int value, int min, int max) {
@@ -509,7 +830,7 @@ public final class ClientInteractionUtils {
             remainingTicks--;
             if (remainingTicks <= 0) {
                 for (KeyBinding key : keys) {
-                    key.setPressed(false);
+                    releaseKeyBinding(key);
                 }
                 done = true;
             }

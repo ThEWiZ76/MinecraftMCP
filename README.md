@@ -113,6 +113,7 @@ GUI tools, when `enableGuiAutomationTools` is true:
 - `type_text`
 - `wait_for_screen`
 - `close_current_screen`
+- `open_inventory`
 
 Client interaction tools:
 
@@ -122,6 +123,10 @@ Client interaction tools:
 - `right_click_item` - use held item in air
 - `set_held_slot` - select hotbar slot 0-8
 - `movement_input` - press/release movement keys for a number of ticks
+- `keybind_input` - tap, press, release, or hold named Minecraft keybindings
+- `keyboard_input` - send raw key events to the current screen or client
+- `mouse_input` - send raw click, scroll, or drag events to the current screen
+- `look_input` - set or adjust player yaw/pitch
 - `sneak` - press, release, toggle, or hold sneak
 - `wait_for_chat` - wait for literal chat text or regex
 - `get_scoreboard` - return sidebar title and ordered lines

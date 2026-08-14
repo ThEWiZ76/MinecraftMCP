@@ -329,7 +329,8 @@ public class HTTPMCPServer {
                 case "attack_block", "left_click_air", "right_click_block", "right_click_item",
                      "set_held_slot", "movement_input", "sneak", "wait_for_chat",
                      "get_scoreboard", "get_client_disconnect", "get_bossbar_actionbar_titles",
-                     "get_nearby_entities", "get_recent_sounds_particles" -> {
+                     "get_nearby_entities", "get_recent_sounds_particles", "keybind_input",
+                     "keyboard_input", "mouse_input", "look_input", "open_inventory" -> {
                     return handleClientInteractionTool(toolName, arguments);
                 }
                 case null, default -> {
@@ -521,6 +522,11 @@ public class HTTPMCPServer {
             case "get_bossbar_actionbar_titles" -> awaitJsonResult(ClientInteractionUtils.getBossbarActionbarTitles(), "get bossbar actionbar titles");
             case "get_nearby_entities" -> awaitJsonResult(ClientInteractionUtils.getNearbyEntities(params), "get nearby entities");
             case "get_recent_sounds_particles" -> awaitJsonResult(ClientInteractionUtils.getRecentSoundsParticles(params), "get recent sounds particles");
+            case "keybind_input" -> awaitJsonResult(ClientInteractionUtils.keybindInput(params), "keybind input");
+            case "keyboard_input" -> awaitJsonResult(ClientInteractionUtils.keyboardInput(params), "keyboard input");
+            case "mouse_input" -> awaitJsonResult(ClientInteractionUtils.mouseInput(params), "mouse input");
+            case "look_input" -> awaitJsonResult(ClientInteractionUtils.lookInput(params), "look input");
+            case "open_inventory" -> awaitJsonResult(ClientInteractionUtils.openInventory(params), "open inventory");
             default -> MCPProtocol.createErrorResponse("Unknown tool: " + toolName, null);
         };
     }
