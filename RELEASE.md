@@ -13,6 +13,7 @@ Public NeoForge release for Minecraft 1.21.1.
 - Safe command execution plus opt-in arbitrary chat commands.
 - Screenshot capture with optional camera position and rotation.
 - GUI screen inspection and menu click automation.
+- GUI text input with `type_text`, including sign editors and text fields.
 - In-world right-click block/item tools, hotbar selection, movement, sneak, and chat wait tools.
 
 ## Install
