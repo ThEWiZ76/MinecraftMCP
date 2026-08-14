@@ -77,6 +77,11 @@ public class MCPProtocolTest {
 
         assertFalse(containsToolNamed(tools, "get_current_screen"));
         assertFalse(containsToolNamed(tools, "click_screen_slot"));
+        assertFalse(containsToolNamed(tools, "click_screen_button"));
+        assertFalse(containsToolNamed(tools, "click_screen_entry"));
+        assertFalse(containsToolNamed(tools, "click_screen_xy"));
+        assertFalse(containsToolNamed(tools, "type_text"));
+        assertFalse(containsToolNamed(tools, "wait_for_screen"));
         assertFalse(containsToolNamed(tools, "close_current_screen"));
     }
 
@@ -94,6 +99,11 @@ public class MCPProtocolTest {
 
         assertTrue(containsToolNamed(tools, "get_current_screen"));
         assertTrue(containsToolNamed(tools, "click_screen_slot"));
+        assertTrue(containsToolNamed(tools, "click_screen_button"));
+        assertTrue(containsToolNamed(tools, "click_screen_entry"));
+        assertTrue(containsToolNamed(tools, "click_screen_xy"));
+        assertTrue(containsToolNamed(tools, "type_text"));
+        assertTrue(containsToolNamed(tools, "wait_for_screen"));
         assertTrue(containsToolNamed(tools, "close_current_screen"));
     }
 
