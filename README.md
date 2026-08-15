@@ -97,13 +97,13 @@ Core tools:
 
 - `execute_commands` - execute allowed Minecraft commands with safety validation
 - `execute_chat_commands` - execute arbitrary player chat commands when enabled
-- `get_player_info` - return position, facing, dimension, health, and inventory summary
+- `get_player_info` - return position, facing, dimension, health, and inventory with full item stack data
 - `get_blocks_in_area` - scan non-air blocks in a rectangular area
 - `take_screenshot` - capture PNG screenshot with optional `x/y/z/yaw/pitch`
 
 GUI tools, when `enableGuiAutomationTools` is true:
 
-- `get_current_screen`
+- `get_current_screen` - includes handled-screen cursor/slot stacks with full item stack data
 - `click_screen_slot`
 - `click_screen_button`
 - `click_screen_entry`
@@ -132,6 +132,8 @@ World and input tools:
 - `get_bossbar_actionbar_titles` - return title/actionbar/bossbar state
 - `get_nearby_entities` - return nearby entities
 - `get_recent_sounds_particles` - return captured sound and particle events when hooks are available
+
+Inventory and screen item stacks include item id, count, display/custom names, damage, lore, data components, custom data/NBT, and encoded/saved item NBT when available.
 
 ## NeoForge Parity Notes
 

@@ -12,7 +12,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Field;
@@ -114,7 +113,7 @@ public final class ScreenAutomationUtils {
 
         AbstractContainerMenu menu = handledScreen.getMenu();
         result.addProperty("syncId", menu.containerId);
-        result.add("cursorStack", serializeStack(menu.getCarried()));
+        result.add("cursorStack", StackSerializationUtils.serializeStack(menu.getCarried()));
 
         JsonArray slots = new JsonArray();
         for (Slot slot : menu.slots) {
@@ -124,7 +123,7 @@ public final class ScreenAutomationUtils {
             slotJson.addProperty("x", slot.x);
             slotJson.addProperty("y", slot.y);
             slotJson.addProperty("hasStack", slot.hasItem());
-            slotJson.add("stack", serializeStack(slot.getItem()));
+            slotJson.add("stack", StackSerializationUtils.serializeStack(slot.getItem()));
             slots.add(slotJson);
         }
         result.add("slots", slots);
@@ -474,19 +473,6 @@ public final class ScreenAutomationUtils {
             return false;
         }
         return true;
-    }
-
-    private static JsonObject serializeStack(ItemStack stack) {
-        JsonObject result = new JsonObject();
-        boolean present = stack != null && !stack.isEmpty();
-        result.addProperty("present", present);
-        if (!present) {
-            return result;
-        }
-        result.addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-        result.addProperty("count", stack.getCount());
-        result.addProperty("displayName", stack.getHoverName().getString());
-        return result;
     }
 
     private static List<?> invokeChildren(Object target) {

@@ -142,7 +142,8 @@ public class MCPProtocol {
             "- position: {x,y,z} exact floating-point coordinates\n" +
             "- facingDirection: cardinal direction (North/South/East/West)\n" +
             "- frontPosition: {x,y,z} 3 blocks ahead of player - good starting point for builds\n" +
-            "- gameMode, dimension, timeOfDay, health, foodLevel, inventory\n\n" +
+            "- gameMode, dimension, timeOfDay, health, foodLevel, inventory\n" +
+            "- inventory includes selectedSlot, full main/off-hand stacks, and slots[]. Each stack includes item id, count, names, damage, lore, data components, customData, and encoded NBT when available.\n\n" +
             "IMPORTANT: Minecraft Y-axis is vertical (Y=64 is typical ground level). " +
             "Use blockPosition for command coordinates. " +
             "Build at frontPosition or offset from blockPosition using absolute coordinates for reliability."
@@ -250,7 +251,7 @@ public class MCPProtocol {
             JsonObject getCurrentScreenTool = new JsonObject();
             getCurrentScreenTool.addProperty("name", "get_current_screen");
             getCurrentScreenTool.addProperty("description",
-                "Inspect the currently open Minecraft screen. Returns title, screen class, size, detected buttons, detected list entries, and for handled inventory screens sync id, cursor stack, and slot contents."
+                "Inspect the currently open Minecraft screen. Returns title, screen class, size, detected buttons, detected list entries, and for handled inventory screens sync id, cursor stack, and slot contents. Slot stacks include item id, count, names, damage, lore, data components, customData, and encoded NBT when available."
             );
             JsonObject emptyInputSchema = new JsonObject();
             emptyInputSchema.addProperty("type", "object");

@@ -1,11 +1,11 @@
 package cuspymd.mcp.mod.utils;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import cuspymd.mcp.mod.server.MCPProtocol;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.phys.Vec3;
 
 public final class PlayerInfoProvider {
@@ -80,14 +80,47 @@ public final class PlayerInfoProvider {
 
         JsonObject inventory = new JsonObject();
         inventory.addProperty("selectedSlot", player.getInventory().selected);
+        inventory.add("mainHandStack", StackSerializationUtils.serializeStack(player.getMainHandItem()));
+        inventory.add("offHandStack", StackSerializationUtils.serializeStack(player.getOffhandItem()));
         inventory.addProperty("mainHandItem", itemName(player.getMainHandItem()));
         inventory.addProperty("offHandItem", itemName(player.getOffhandItem()));
+        inventory.add("slots", serializeInventorySlots(player.getInventory()));
         result.add("inventory", inventory);
         return result;
     }
 
-    private static String itemName(ItemStack stack) {
-        return stack == null || stack.isEmpty() ? "empty" : BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+    private static JsonArray serializeInventorySlots(Inventory inventory) {
+        JsonArray slots = new JsonArray();
+        int slot = 0;
+        for (int i = 0; i < inventory.items.size(); i++, slot++) {
+            slots.add(serializeSlot(slot, i, "hotbar".equals(sectionForMainIndex(i)) ? "hotbar" : "main", i == inventory.selected, inventory.items.get(i)));
+        }
+        for (int i = 0; i < inventory.armor.size(); i++, slot++) {
+            slots.add(serializeSlot(slot, i, "armor", false, inventory.armor.get(i)));
+        }
+        for (int i = 0; i < inventory.offhand.size(); i++, slot++) {
+            slots.add(serializeSlot(slot, i, "offhand", false, inventory.offhand.get(i)));
+        }
+        return slots;
+    }
+
+    private static JsonObject serializeSlot(int slot, int index, String section, boolean selected, net.minecraft.world.item.ItemStack stack) {
+        JsonObject slotJson = new JsonObject();
+        slotJson.addProperty("slot", slot);
+        slotJson.addProperty("index", index);
+        slotJson.addProperty("section", section);
+        slotJson.addProperty("selected", selected);
+        slotJson.add("stack", StackSerializationUtils.serializeStack(stack));
+        return slotJson;
+    }
+
+    private static String sectionForMainIndex(int index) {
+        return index >= 0 && index < 9 ? "hotbar" : "main";
+    }
+
+    private static String itemName(net.minecraft.world.item.ItemStack stack) {
+        JsonObject serialized = StackSerializationUtils.serializeStack(stack);
+        return serialized.has("itemId") ? serialized.get("itemId").getAsString() : "empty";
     }
 
     private static String getCardinalDirection(float yaw) {

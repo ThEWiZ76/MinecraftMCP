@@ -37,7 +37,7 @@ public final class MCPProtocol {
                 objectSchema(props("commands", arrayProperty("Commands with or without leading slash")), "commands")));
         }
 
-        tools.add(tool("get_player_info", "Get current player position, facing, dimension, health, and inventory summary.", objectSchema(new JsonObject())));
+        tools.add(tool("get_player_info", "Get current player position, facing, dimension, health, and inventory. Inventory includes selectedSlot, full main/off-hand stacks, and slots[]; each stack includes item id, count, names, damage, lore, data components, customData, and encoded/saved NBT when available.", objectSchema(new JsonObject())));
         tools.add(tool("get_blocks_in_area", "Scan non-air blocks in a rectangular area.", objectSchema(props(
             "from", positionProperty("Start position"),
             "to", positionProperty("End position")
@@ -140,7 +140,7 @@ public final class MCPProtocol {
 
     private static void addGuiAutomationTools(JsonArray tools) {
         tools.add(tool("get_current_screen",
-            "Inspect current Minecraft screen. Returns title, class, size, buttons, list entries, and handled-screen slots.",
+            "Inspect current Minecraft screen. Returns title, class, size, buttons, list entries, and handled-screen slots. Slot stacks include item id, count, names, damage, lore, data components, customData, and encoded/saved NBT when available.",
             objectSchema(new JsonObject())));
         tools.add(tool("click_screen_slot",
             "Click a slot in a handled inventory screen.",
