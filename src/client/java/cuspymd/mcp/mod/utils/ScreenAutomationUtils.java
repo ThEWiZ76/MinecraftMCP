@@ -11,7 +11,6 @@ import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.input.MouseInput;
-import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -114,7 +113,7 @@ public final class ScreenAutomationUtils {
 
         ScreenHandler handler = handledScreen.getScreenHandler();
         result.addProperty("syncId", handler.syncId);
-        result.add("cursorStack", serializeStack(handler.getCursorStack()));
+        result.add("cursorStack", StackSerializationUtils.serializeStack(handler.getCursorStack()));
 
         JsonArray slots = new JsonArray();
         for (Slot slot : handler.slots) {
@@ -124,7 +123,7 @@ public final class ScreenAutomationUtils {
             slotJson.addProperty("x", slot.x);
             slotJson.addProperty("y", slot.y);
             slotJson.addProperty("hasStack", slot.hasStack());
-            slotJson.add("stack", serializeStack(slot.getStack()));
+            slotJson.add("stack", StackSerializationUtils.serializeStack(slot.getStack()));
             slots.add(slotJson);
         }
         result.add("slots", slots);
@@ -314,20 +313,6 @@ public final class ScreenAutomationUtils {
         JsonObject result = lastScreen.deepCopy();
         result.addProperty("matched", false);
         result.addProperty("timeout_ms", timeoutMs);
-        return result;
-    }
-
-    private static JsonObject serializeStack(ItemStack stack) {
-        JsonObject result = new JsonObject();
-        boolean present = stack != null && !stack.isEmpty();
-        result.addProperty("present", present);
-        if (!present) {
-            return result;
-        }
-
-        result.addProperty("itemId", Registries.ITEM.getId(stack.getItem()).toString());
-        result.addProperty("count", stack.getCount());
-        result.addProperty("displayName", stack.getName().getString());
         return result;
     }
 

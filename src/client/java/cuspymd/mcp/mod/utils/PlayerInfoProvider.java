@@ -1,8 +1,10 @@
 package cuspymd.mcp.mod.utils;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
@@ -91,13 +93,43 @@ public class PlayerInfoProvider {
         // Inventory information
         JsonObject inventory = new JsonObject();
         inventory.addProperty("selectedSlot", player.getInventory().getSelectedSlot());
-        inventory.addProperty("mainHandItem", player.getMainHandStack().isEmpty() ? "empty" : 
+        inventory.add("mainHandStack", StackSerializationUtils.serializeStack(player.getMainHandStack()));
+        inventory.add("offHandStack", StackSerializationUtils.serializeStack(player.getOffHandStack()));
+        inventory.addProperty("mainHandItem", player.getMainHandStack().isEmpty() ? "empty" :
             player.getMainHandStack().getItem().toString());
-        inventory.addProperty("offHandItem", player.getOffHandStack().isEmpty() ? "empty" : 
+        inventory.addProperty("offHandItem", player.getOffHandStack().isEmpty() ? "empty" :
             player.getOffHandStack().getItem().toString());
+        inventory.add("slots", serializeInventorySlots(player.getInventory()));
         playerInfo.add("inventory", inventory);
         
         return playerInfo;
+    }
+
+    private static JsonArray serializeInventorySlots(PlayerInventory inventory) {
+        JsonArray slots = new JsonArray();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            JsonObject slotJson = new JsonObject();
+            slotJson.addProperty("slot", slot);
+            slotJson.addProperty("index", slot);
+            slotJson.addProperty("section", inventorySection(slot));
+            slotJson.addProperty("selected", slot == inventory.getSelectedSlot());
+            slotJson.add("stack", StackSerializationUtils.serializeStack(inventory.getStack(slot)));
+            slots.add(slotJson);
+        }
+        return slots;
+    }
+
+    private static String inventorySection(int slot) {
+        if (slot >= 0 && slot < PlayerInventory.getHotbarSize()) {
+            return "hotbar";
+        }
+        if (slot >= PlayerInventory.getHotbarSize() && slot < PlayerInventory.MAIN_SIZE) {
+            return "main";
+        }
+        if (slot == PlayerInventory.OFF_HAND_SLOT) {
+            return "offhand";
+        }
+        return "equipment";
     }
     
     private static String getCardinalDirection(float yaw) {
